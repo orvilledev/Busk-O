@@ -12,8 +12,10 @@ import {
   Type,
   X,
 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { DEMO_SONGS } from "@/lib/demo-songs";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
+import { imageToChordPro, imageFromClipboard } from "@/lib/ocr-run";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,11 @@ export function Playground() {
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1.1);
   const [stage, setStage] = useState(false);
+  const [ocr, setOcr] = useState<{ busy: boolean; progress: number }>({
+    busy: false,
+    progress: 0,
+  });
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const baseKey = DEMO_SONGS[songIndex]?.key ?? null;
   const renderSemitones = semitones - capo;
@@ -40,12 +47,36 @@ export function Playground() {
     setCapo(0);
   }
 
+  function insertAtCaret(text: string) {
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? body.length;
+    const end = el?.selectionEnd ?? body.length;
+    const pad = start > 0 && body[start - 1] !== "\n" ? "\n" : "";
+    setBody(body.slice(0, start) + pad + text + body.slice(end));
+  }
+
+  /** Paste a screenshot of a chart → OCR it into ChordPro at the caret. */
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const image = imageFromClipboard(e.clipboardData?.items);
+    if (!image) return; // let normal text paste happen
+    e.preventDefault();
+    setOcr({ busy: true, progress: 0 });
+    try {
+      const chordpro = await imageToChordPro(image, (p) =>
+        setOcr({ busy: true, progress: p }),
+      );
+      insertAtCaret(chordpro);
+    } finally {
+      setOcr({ busy: false, progress: 0 });
+    }
+  }
+
   return (
     <div>
       <div className="mb-4 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm">
         <strong>Local preview.</strong> You&apos;re trying Busk-O with no account —
         edits live only in this tab. Connect Supabase to unlock accounts,
-        setlists, offline sync, export &amp; OCR import.
+        setlists, offline sync &amp; export.
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -134,13 +165,28 @@ export function Playground() {
       </div>
 
       {/* Editor + preview */}
+      <p className="mb-2 text-xs text-muted">
+        Edit the ChordPro below — or{" "}
+        <strong className="text-foreground">paste a screenshot</strong> of a
+        chord chart to read it in.
+      </p>
       <div className="grid gap-3 lg:grid-cols-2">
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          spellCheck={false}
-          className="min-h-96 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-accent"
-        />
+        <div className="relative">
+          <textarea
+            ref={bodyRef}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            onPaste={handlePaste}
+            spellCheck={false}
+            className="min-h-96 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+          />
+          {ocr.busy && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-background/80 text-sm">
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+              <span>Reading chart… {ocr.progress}%</span>
+            </div>
+          )}
+        </div>
         <div className="min-h-96 overflow-auto rounded-lg border border-border bg-surface p-4">
           <ChordChart source={body} semitones={renderSemitones} fontScale={fontScale} />
         </div>
