@@ -8,6 +8,8 @@ import {
   semitonesBetween,
   transposeKey,
   capoFret,
+  toLyricSections,
+  toPlainLyrics,
 } from "./chordpro";
 
 const AMAZING_GRACE = `{title: Amazing Grace}
@@ -79,6 +81,31 @@ describe("chordsOverWordsToChordPro", () => {
     expect(out).toContain("[G]");
     expect(out).toContain("[C]");
     expect(out).toContain("Amazing");
+  });
+});
+
+describe("toLyricSections", () => {
+  it("strips chords and groups by section", () => {
+    const sections = toLyricSections(AMAZING_GRACE);
+    expect(sections.length).toBe(2);
+    expect(sections[0].lines[0]).toBe("Amazing grace how sweet the sound");
+    expect(sections[0].lines[0]).not.toContain("[");
+    expect(sections[1].isChorus).toBe(true);
+  });
+
+  it("drops empty and non-lyric lines", () => {
+    const sections = toLyricSections("{title: X}\n\n[C]Only [G]line");
+    expect(sections).toHaveLength(1);
+    expect(sections[0].lines).toEqual(["Only line"]);
+  });
+});
+
+describe("toPlainLyrics", () => {
+  it("separates sections with a blank line", () => {
+    const text = toPlainLyrics(AMAZING_GRACE);
+    expect(text).toContain("Amazing grace how sweet the sound");
+    expect(text).toContain("\n\n");
+    expect(text).not.toContain("[G]");
   });
 });
 

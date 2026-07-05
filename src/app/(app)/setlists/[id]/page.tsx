@@ -38,6 +38,8 @@ export default async function SetlistPage({
       <SetlistHeader setlist={setlist as Setlist} />
       <SetlistBuilder
         setlistId={id}
+        setlistName={setlist.name}
+        eventDate={setlist.event_date}
         initialItems={(items ?? []) as SetlistSongWithSong[]}
         availableSongs={songs ?? []}
       />

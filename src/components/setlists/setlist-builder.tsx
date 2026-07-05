@@ -17,6 +17,8 @@ import {
 import { KEYS } from "@/lib/chordpro";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ExportMenu } from "./export-menu";
+import type { ExportSetlist } from "@/lib/pptx";
 import type { SetlistSongWithSong, Song } from "@/types/domain";
 import {
   addSongToSetlist,
@@ -29,10 +31,14 @@ type SongPick = Pick<Song, "id" | "title" | "artist">;
 
 export function SetlistBuilder({
   setlistId,
+  setlistName,
+  eventDate,
   initialItems,
   availableSongs,
 }: {
   setlistId: string;
+  setlistName: string;
+  eventDate: string | null;
   initialItems: SetlistSongWithSong[];
   availableSongs: SongPick[];
 }) {
@@ -68,6 +74,19 @@ export function SetlistBuilder({
     router.refresh();
   }
 
+  const exportData: ExportSetlist = {
+    name: setlistName,
+    eventDate,
+    songs: items.map((i) => ({
+      title: i.song.title,
+      artist: i.song.artist,
+      body: i.song.body,
+      transpose_key: i.transpose_key,
+      capo: i.capo,
+      notes: i.notes,
+    })),
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -78,6 +97,7 @@ export function SetlistBuilder({
           <Button variant="secondary" size="sm" onClick={() => setPicking(true)}>
             <Plus className="h-4 w-4" /> Add song
           </Button>
+          <ExportMenu setlist={exportData} />
           {items.length > 0 && (
             <Link href={`/setlists/${setlistId}/play`}>
               <Button size="sm">

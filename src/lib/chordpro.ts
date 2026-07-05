@@ -2,6 +2,7 @@ import {
   ChordProParser,
   ChordProFormatter,
   ChordsOverWordsParser,
+  ChordLyricsPair,
   Song,
 } from "chordsheetjs";
 
@@ -85,4 +86,46 @@ export function transposeKey(from: Key, semitones: number): Key {
  */
 export function capoFret(shapeKey: Key, soundingKey: Key): number {
   return (KEYS.indexOf(soundingKey) - KEYS.indexOf(shapeKey) + 12) % 12;
+}
+
+/** A block of lyrics (one paragraph) with its section role. */
+export interface LyricSection {
+  isChorus: boolean;
+  lines: string[];
+}
+
+/**
+ * Extract lyrics-only sections (chords stripped) for projection slides.
+ * Empty lines and non-lyric directives are dropped.
+ */
+export function toLyricSections(source: string): LyricSection[] {
+  const song = parse(source);
+  const sections: LyricSection[] = [];
+
+  for (const paragraph of song.bodyParagraphs) {
+    const lines: string[] = [];
+    for (const line of paragraph.lines) {
+      const text = line.items
+        .filter((i): i is ChordLyricsPair => i instanceof ChordLyricsPair)
+        .map((p) => p.lyrics ?? "")
+        .join("")
+        .trim();
+      if (text) lines.push(text);
+    }
+    if (lines.length > 0) {
+      sections.push({
+        isChorus: paragraph.lines.some((l) => l.isChorus()),
+        lines,
+      });
+    }
+  }
+
+  return sections;
+}
+
+/** Full lyrics as plain text, blank line between sections. */
+export function toPlainLyrics(source: string): string {
+  return toLyricSections(source)
+    .map((s) => s.lines.join("\n"))
+    .join("\n\n");
 }
