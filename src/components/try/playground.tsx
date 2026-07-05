@@ -1,24 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import {
-  Maximize2,
-  Minus,
-  Music,
-  Pause,
-  Play,
-  Plus,
-  RotateCcw,
-  Type,
-  X,
-} from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, Maximize2, Music, RotateCcw, Type } from "lucide-react";
 import { DEMO_SONGS } from "@/lib/demo-songs";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
-import { imageToChordPro, imageFromClipboard } from "@/lib/ocr-run";
+import { useOcrPaste } from "@/hooks/use-ocr-paste";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { Button } from "@/components/ui/button";
+import { Stepper } from "@/components/ui/stepper";
 import { cn } from "@/lib/utils";
+import { StageOverlay } from "./stage-overlay";
 
 const isKey = (k: string): k is Key => (KEYS as readonly string[]).includes(k);
 
@@ -29,11 +20,8 @@ export function Playground() {
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1.1);
   const [stage, setStage] = useState(false);
-  const [ocr, setOcr] = useState<{ busy: boolean; progress: number }>({
-    busy: false,
-    progress: 0,
-  });
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const { ocr, handlePaste } = useOcrPaste(body, setBody, bodyRef);
 
   const baseKey = DEMO_SONGS[songIndex]?.key ?? null;
   const renderSemitones = semitones - capo;
@@ -45,30 +33,6 @@ export function Playground() {
     setBody(DEMO_SONGS[i].body);
     setSemitones(0);
     setCapo(0);
-  }
-
-  function insertAtCaret(text: string) {
-    const el = bodyRef.current;
-    const start = el?.selectionStart ?? body.length;
-    const end = el?.selectionEnd ?? body.length;
-    const pad = start > 0 && body[start - 1] !== "\n" ? "\n" : "";
-    setBody(body.slice(0, start) + pad + text + body.slice(end));
-  }
-
-  /** Paste a screenshot of a chart → OCR it into ChordPro at the caret. */
-  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const image = imageFromClipboard(e.clipboardData?.items);
-    if (!image) return; // let normal text paste happen
-    e.preventDefault();
-    setOcr({ busy: true, progress: 0 });
-    try {
-      const chordpro = await imageToChordPro(image, (p) =>
-        setOcr({ busy: true, progress: p }),
-      );
-      insertAtCaret(chordpro);
-    } finally {
-      setOcr({ busy: false, progress: 0 });
-    }
   }
 
   return (
@@ -200,142 +164,6 @@ export function Playground() {
           onClose={() => setStage(false)}
         />
       )}
-    </div>
-  );
-}
-
-function Stepper({
-  label,
-  display,
-  onDec,
-  onInc,
-}: {
-  label: string;
-  display: string;
-  onDec: () => void;
-  onInc: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-muted">{label}</span>
-      <button
-        onClick={onDec}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-surface-2"
-      >
-        <Minus className="h-3.5 w-3.5" />
-      </button>
-      <span className="w-8 text-center font-mono">{display}</span>
-      <button
-        onClick={onInc}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-surface-2"
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
-function StageOverlay({
-  source,
-  semitones,
-  title,
-  onClose,
-}: {
-  source: string;
-  semitones: number;
-  title: string;
-  onClose: () => void;
-}) {
-  const [font, setFont] = useState(1.8);
-  const [scrolling, setScrolling] = useState(false);
-  const [speed, setSpeed] = useState(24);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!scrolling) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    let raf = 0;
-    let prev = performance.now();
-    let remainder = 0;
-    function step(now: number) {
-      remainder += (speed * (now - prev)) / 1000;
-      prev = now;
-      const whole = Math.floor(remainder);
-      if (whole > 0) {
-        el!.scrollTop += whole;
-        remainder -= whole;
-      }
-      if (el!.scrollTop + el!.clientHeight >= el!.scrollHeight - 1) {
-        setScrolling(false);
-        return;
-      }
-      raf = requestAnimationFrame(step);
-    }
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [scrolling, speed]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <div className="truncate text-lg font-bold">{title}</div>
-        <div className="flex items-center gap-1">
-          {scrolling && (
-            <div className="mr-1 hidden items-center gap-1 sm:flex">
-              <button
-                onClick={() => setSpeed((s) => Math.max(6, s - 6))}
-                className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface-2"
-              >
-                −
-              </button>
-              <span className="w-6 text-center font-mono text-xs">{speed}</span>
-              <button
-                onClick={() => setSpeed((s) => Math.min(120, s + 6))}
-                className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface-2"
-              >
-                +
-              </button>
-            </div>
-          )}
-          <button
-            onClick={() => setScrolling((s) => !s)}
-            aria-label={scrolling ? "Pause auto-scroll" : "Start auto-scroll"}
-            className={cn(
-              "rounded-md border border-border px-2 py-1 hover:bg-surface-2",
-              scrolling && "bg-accent text-accent-foreground",
-            )}
-          >
-            {scrolling ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </button>
-          <button
-            onClick={() => setFont((f) => Math.max(0.9, +(f - 0.15).toFixed(2)))}
-            aria-label="Smaller text"
-            className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setFont((f) => Math.min(3.5, +(f + 0.15).toFixed(2)))}
-            aria-label="Larger text"
-            className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          <button
-            onClick={onClose}
-            aria-label="Exit stage view"
-            className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      <div ref={scrollRef} className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-4xl px-6 py-6">
-          <ChordChart source={source} semitones={semitones} fontScale={font} />
-        </div>
-      </div>
     </div>
   );
 }

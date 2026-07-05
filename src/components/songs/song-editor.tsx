@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { chordsOverWordsToChordPro, KEYS } from "@/lib/chordpro";
-import { imageToChordPro, imageFromClipboard } from "@/lib/ocr-run";
+import { useOcrPaste } from "@/hooks/use-ocr-paste";
 import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
 import type { Song } from "@/types/domain";
@@ -22,41 +22,13 @@ const labelClass = "mb-1 block text-xs font-medium text-muted";
 export function SongEditor({ song, action }: SongEditorProps) {
   const [body, setBody] = useState(song?.body ?? "");
   const [submitting, setSubmitting] = useState(false);
-  const [ocr, setOcr] = useState<{ busy: boolean; progress: number }>({
-    busy: false,
-    progress: 0,
-  });
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const { ocr, handlePaste } = useOcrPaste(body, setBody, bodyRef);
 
   function handleConvert() {
     // Interpret the current textarea as chords-over-lyrics and rewrite it as
     // ChordPro. Handy right after pasting a chart off the web.
     setBody(chordsOverWordsToChordPro(body));
-  }
-
-  /** Insert text at the textarea caret (or append), keeping React state in sync. */
-  function insertAtCaret(text: string) {
-    const el = bodyRef.current;
-    const start = el?.selectionStart ?? body.length;
-    const end = el?.selectionEnd ?? body.length;
-    const pad = start > 0 && body[start - 1] !== "\n" ? "\n" : "";
-    setBody(body.slice(0, start) + pad + text + body.slice(end));
-  }
-
-  /** Paste a screenshot of a chart → OCR it into ChordPro at the caret. */
-  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const image = imageFromClipboard(e.clipboardData?.items);
-    if (!image) return; // let normal text paste happen
-    e.preventDefault();
-    setOcr({ busy: true, progress: 0 });
-    try {
-      const chordpro = await imageToChordPro(image, (p) =>
-        setOcr({ busy: true, progress: p }),
-      );
-      insertAtCaret(chordpro);
-    } finally {
-      setOcr({ busy: false, progress: 0 });
-    }
   }
 
   return (

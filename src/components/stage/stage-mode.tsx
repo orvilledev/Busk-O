@@ -19,6 +19,8 @@ import {
   transposeKey,
   type Key,
 } from "@/lib/keys";
+import { useAutoScroll } from "@/hooks/use-auto-scroll";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { cn } from "@/lib/utils";
 
@@ -55,10 +57,12 @@ export function StageMode({
   const [index, setIndex] = useState(0);
   const [fontScale, setFontScale] = useState(1.6);
   const [showList, setShowList] = useState(false);
-  const [scrolling, setScrolling] = useState(false);
   const [speed, setSpeed] = useState(24); // px per second
   const touchStartX = useRef<number | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const { scrolling, setScrolling } = useAutoScroll(scrollRef, speed);
+  useWakeLock(); // keep the screen awake while on stage
 
   const current = songs[index];
   const last = songs.length - 1;
@@ -70,36 +74,6 @@ export function StageMode({
     },
     [last],
   );
-
-  // Auto-scroll the chart at a steady pace so hands stay on the instrument.
-  useEffect(() => {
-    if (!scrolling) return;
-    const el = scrollRef.current;
-    if (!el) return;
-
-    let raf = 0;
-    let prev = performance.now();
-    let remainder = 0;
-
-    function step(now: number) {
-      const dt = (now - prev) / 1000;
-      prev = now;
-      remainder += speed * dt;
-      const whole = Math.floor(remainder);
-      if (whole > 0) {
-        el!.scrollTop += whole;
-        remainder -= whole;
-      }
-      // Stop when we reach the bottom.
-      if (el!.scrollTop + el!.clientHeight >= el!.scrollHeight - 1) {
-        setScrolling(false);
-        return;
-      }
-      raf = requestAnimationFrame(step);
-    }
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [scrolling, speed]);
 
   // Jump back to the top when the song changes (auto-scroll, if on, continues).
   useEffect(() => {
@@ -123,35 +97,7 @@ export function StageMode({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, router, setlistId]);
-
-  // Keep the screen awake while on stage.
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    let released = false;
-
-    async function acquire() {
-      try {
-        if ("wakeLock" in navigator) {
-          lock = await navigator.wakeLock.request("screen");
-        }
-      } catch {
-        // Denied or unsupported — nothing we can do, fail quietly.
-      }
-    }
-    acquire();
-
-    function onVisible() {
-      if (document.visibilityState === "visible" && !released) acquire();
-    }
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      released = true;
-      document.removeEventListener("visibilitychange", onVisible);
-      lock?.release().catch(() => {});
-    };
-  }, []);
+  }, [go, router, setlistId, setScrolling]);
 
   if (!current) return null;
 

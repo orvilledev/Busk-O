@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  Minus,
-  Plus,
-  Pencil,
-  Trash2,
-  Type,
-  RotateCcw,
-} from "lucide-react";
+import { Pencil, Trash2, Type, RotateCcw } from "lucide-react";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
+import { Stepper } from "@/components/ui/stepper";
 import type { Song } from "@/types/domain";
 
 const isKey = (k: string | null): k is Key =>
@@ -83,14 +77,12 @@ export function SongView({
       <div className="mb-5 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface p-3 text-sm">
         <Stepper
           label="Transpose"
-          value={semitones}
           display={semitones > 0 ? `+${semitones}` : `${semitones}`}
           onDec={() => setSemitones((s) => s - 1)}
           onInc={() => setSemitones((s) => s + 1)}
         />
         <Stepper
           label="Capo"
-          value={capo}
           display={`${capo}`}
           onDec={() => setCapo((c) => Math.max(0, c - 1))}
           onInc={() => setCapo((c) => Math.min(11, c + 1))}
@@ -142,38 +134,6 @@ export function SongView({
       </div>
 
       <ChordChart source={song.body} semitones={renderSemitones} fontScale={fontScale} />
-    </div>
-  );
-}
-
-function Stepper({
-  label,
-  display,
-  onDec,
-  onInc,
-}: {
-  label: string;
-  value: number;
-  display: string;
-  onDec: () => void;
-  onInc: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-muted">{label}</span>
-      <button
-        onClick={onDec}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-surface-2"
-      >
-        <Minus className="h-3.5 w-3.5" />
-      </button>
-      <span className="w-8 text-center font-mono">{display}</span>
-      <button
-        onClick={onInc}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-surface-2"
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }
