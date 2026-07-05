@@ -23,7 +23,9 @@ them hands-free on a dark, dim-stage-friendly interface — online or off.
 
 2. **Create a Supabase project** at [supabase.com](https://supabase.com), then
    run the SQL in [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-   in the project's SQL editor.
+   in the project's SQL editor. After you've signed up in the app once, you can
+   optionally load a few public-domain hymns with
+   [`supabase/seed.sql`](supabase/seed.sql).
 
 3. **Configure env** — copy `.env.example` to `.env.local` and fill in your
    Project URL and anon key (Supabase → Project Settings → API):
@@ -50,14 +52,28 @@ them hands-free on a dark, dim-stage-friendly interface — online or off.
 | `npm run test:watch` | Watch-mode tests          |
 | `npm run lint`       | ESLint                    |
 
+## Features
+
+- **Songs** — ChordPro editor with live preview, chords-over-lyrics paste
+  conversion, search + tag filtering.
+- **Charts** — chords stacked over lyrics, live transpose, capo hints
+  ("play G, capo 2, sounds A"), adjustable font size.
+- **Setlists** — drag/reorder builder, per-song key/capo/notes overrides,
+  duplicate a set.
+- **Stage mode** — fullscreen dark player with keyboard / swipe / tap
+  navigation, screen wake-lock, hands-free auto-scroll, and a quick-jump list.
+- **Offline / PWA** — installable, works with no signal; local IndexedDB mirror
+  and a service worker cache pending changes sync on reconnect.
+- **Export** — setlist → PowerPoint lyric slides, plain-text lyrics, or ChordPro.
+- **Import** — OCR a photo of a chart (Tesseract) into an editable song.
+
 ## Build roadmap
 
-See [`PLAN.md`](PLAN.md) for the full phased plan. Current status:
+All six phases are complete — see [`PLAN.md`](PLAN.md) for the detailed plan.
 
-- **Phase 1 — Foundation & auth** ✅ (scaffold, theme, Supabase clients + RLS
-  migration, email/password + magic-link login, protected app shell, `/songs`).
-- Phase 2 — Songs CRUD + ChordPro rendering (next)
-- Phase 3 — Setlists + stage mode
-- Phase 4 — Offline / PWA
-- Phase 5 — PPTX export + OCR import
-- Phase 6 — Polish
+1. **Foundation & auth** ✅ — scaffold, theme, Supabase + RLS, login, app shell.
+2. **Songs + ChordPro rendering** ✅ — editor, chart renderer, transpose/capo.
+3. **Setlists + stage mode** ✅ — builder, overrides, hands-free player.
+4. **Offline / PWA** ✅ — IndexedDB mirror, outbox sync, service worker.
+5. **Export + OCR import** ✅ — PPTX/text/ChordPro export, Tesseract import.
+6. **Polish** ✅ — stage auto-scroll, a11y labels, seed hymns.

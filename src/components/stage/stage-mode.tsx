@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
+  Gauge,
   List,
   Minus,
+  Pause,
+  Play,
   Plus,
   X,
 } from "lucide-react";
@@ -52,7 +55,10 @@ export function StageMode({
   const [index, setIndex] = useState(0);
   const [fontScale, setFontScale] = useState(1.6);
   const [showList, setShowList] = useState(false);
+  const [scrolling, setScrolling] = useState(false);
+  const [speed, setSpeed] = useState(24); // px per second
   const touchStartX = useRef<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const current = songs[index];
   const last = songs.length - 1;
@@ -65,6 +71,41 @@ export function StageMode({
     [last],
   );
 
+  // Auto-scroll the chart at a steady pace so hands stay on the instrument.
+  useEffect(() => {
+    if (!scrolling) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    let prev = performance.now();
+    let remainder = 0;
+
+    function step(now: number) {
+      const dt = (now - prev) / 1000;
+      prev = now;
+      remainder += speed * dt;
+      const whole = Math.floor(remainder);
+      if (whole > 0) {
+        el!.scrollTop += whole;
+        remainder -= whole;
+      }
+      // Stop when we reach the bottom.
+      if (el!.scrollTop + el!.clientHeight >= el!.scrollHeight - 1) {
+        setScrolling(false);
+        return;
+      }
+      raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [scrolling, speed]);
+
+  // Jump back to the top when the song changes (auto-scroll, if on, continues).
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [index]);
+
   // Keyboard navigation.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -74,6 +115,8 @@ export function StageMode({
       } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
         e.preventDefault();
         go(-1);
+      } else if (e.key === "s" || e.key === "S") {
+        setScrolling((s) => !s);
       } else if (e.key === "Escape") {
         router.push(`/setlists/${setlistId}`);
       }
@@ -145,26 +188,59 @@ export function StageMode({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {scrolling && (
+            <div className="mr-1 hidden items-center gap-1 sm:flex" title="Scroll speed">
+              <Gauge className="h-4 w-4 text-muted" />
+              <button
+                onClick={() => setSpeed((s) => Math.max(6, s - 6))}
+                className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface-2"
+              >
+                −
+              </button>
+              <span className="w-6 text-center font-mono text-xs">{speed}</span>
+              <button
+                onClick={() => setSpeed((s) => Math.min(120, s + 6))}
+                className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface-2"
+              >
+                +
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setScrolling((s) => !s)}
+            aria-label={scrolling ? "Pause auto-scroll" : "Start auto-scroll"}
+            title={scrolling ? "Pause auto-scroll (s)" : "Start auto-scroll (s)"}
+            className={cn(
+              "rounded-md border border-border px-2 py-1 hover:bg-surface-2",
+              scrolling && "bg-accent text-accent-foreground",
+            )}
+          >
+            {scrolling ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </button>
           <button
             onClick={() => setFontScale((f) => Math.max(0.9, +(f - 0.15).toFixed(2)))}
+            aria-label="Smaller text"
             className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface-2"
           >
             <Minus className="h-4 w-4" />
           </button>
           <button
             onClick={() => setFontScale((f) => Math.min(3.5, +(f + 0.15).toFixed(2)))}
+            aria-label="Larger text"
             className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface-2"
           >
             <Plus className="h-4 w-4" />
           </button>
           <button
             onClick={() => setShowList((s) => !s)}
+            aria-label="Jump to song"
             className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
           >
             <List className="h-4 w-4" />
           </button>
           <button
             onClick={() => router.push(`/setlists/${setlistId}`)}
+            aria-label="Exit stage mode"
             className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
           >
             <X className="h-4 w-4" />
@@ -174,6 +250,7 @@ export function StageMode({
 
       {/* Chart area with tap zones + swipe */}
       <div
+        ref={scrollRef}
         className="relative flex-1 overflow-auto"
         onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
