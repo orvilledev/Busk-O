@@ -3,11 +3,39 @@
 import { useState } from "react";
 import { ImagePlus, Loader2, ScanLine, Wand2 } from "lucide-react";
 import { chordsOverWordsToChordPro } from "@/lib/chordpro";
+import { preprocessForOcr } from "@/lib/ocr-image";
+import { wordsToChordPro, type OcrWord } from "@/lib/ocr-chords";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { Button } from "@/components/ui/button";
 import { createSong } from "@/app/(app)/songs/actions";
 
 type Status = "idle" | "recognizing" | "ready";
+
+interface TesseractWord {
+  text: string;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+}
+interface TesseractBlock {
+  paragraphs: { lines: { words: TesseractWord[] }[] }[];
+}
+
+/** Flatten Tesseract's block tree into flat words with coordinates. */
+function flattenWords(blocks: TesseractBlock[] | null | undefined): OcrWord[] {
+  const words: OcrWord[] = [];
+  for (const block of blocks ?? []) {
+    for (const para of block.paragraphs ?? []) {
+      for (const line of para.lines ?? []) {
+        for (const wd of line.words ?? []) {
+          const t = wd.text?.trim();
+          if (t) {
+            words.push({ text: t, x0: wd.bbox.x0, y0: wd.bbox.y0, x1: wd.bbox.x1, y1: wd.bbox.y1 });
+          }
+        }
+      }
+    }
+  }
+  return words;
+}
 
 export function OcrImport() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -33,14 +61,26 @@ export function OcrImport() {
     setStatus("recognizing");
     setProgress(0);
     try {
-      const Tesseract = (await import("tesseract.js")).default;
-      const { data } = await Tesseract.recognize(file, "eng", {
+      const { createWorker } = await import("tesseract.js");
+      const prepped = await preprocessForOcr(file);
+
+      const worker = await createWorker("eng", 1, {
         logger: (m: { status: string; progress: number }) => {
           if (m.status === "recognizing text") setProgress(Math.round(m.progress * 100));
         },
       });
-      // OCR output always lands in the editor for review — never saved blind.
-      setBody(data.text.trim());
+      // preserve_interword_spaces keeps gaps meaningful; blocks gives us the
+      // word bounding boxes we need to align chords over the right syllables.
+      await worker.setParameters({ preserve_interword_spaces: "1" });
+      const { data } = await worker.recognize(prepped, {}, { blocks: true, text: true });
+      await worker.terminate();
+
+      const words = flattenWords(data.blocks as TesseractBlock[] | null);
+      // Reconstruct chord-over-lyric layout into ChordPro; fall back to raw
+      // text if we somehow got no word boxes. Always lands in the editor for
+      // review — never saved blind.
+      const chordpro = words.length > 0 ? wordsToChordPro(words) : data.text.trim();
+      setBody(chordpro);
       setStatus("ready");
     } catch {
       setStatus("ready");
@@ -63,9 +103,9 @@ export function OcrImport() {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">
-        Snap a photo of a chord chart. We&apos;ll read the text with OCR — then
-        you clean it up and convert it to a chart before saving. OCR is never
-        perfect, so always review.
+        Snap a photo of a chords-over-lyrics chart. We read it with OCR and
+        align the chords over the right syllables into ChordPro. OCR is never
+        perfect — tweak the result in the editor, then save.
       </p>
 
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface py-10 text-center hover:border-accent">

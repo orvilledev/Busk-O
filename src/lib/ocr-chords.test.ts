@@ -1,0 +1,113 @@
+import { describe, it, expect } from "vitest";
+import {
+  isChord,
+  clusterRows,
+  rowsToChordPro,
+  wordsToChordPro,
+  type OcrWord,
+} from "./ocr-chords";
+
+const w = (text: string, x0: number, y0: number): OcrWord => ({
+  text,
+  x0,
+  y0,
+  x1: x0 + text.length * 10,
+  y1: y0 + 16,
+});
+
+describe("isChord", () => {
+  it("accepts real chord spellings", () => {
+    for (const c of ["G", "Em", "C", "D", "Am7", "Cmaj7", "Dsus4", "D/F#", "G/B", "Cadd9", "Dadd4"]) {
+      expect(isChord(c), c).toBe(true);
+    }
+  });
+
+  it("rejects lyric words", () => {
+    for (const bad of ["love", "the", "dancing", "Baby", "ti-ime", "[Verse]"]) {
+      expect(isChord(bad), bad).toBe(false);
+    }
+  });
+});
+
+describe("clusterRows", () => {
+  it("separates a chord line from the lyric line below it", () => {
+    const words = [
+      w("G", 60, 70),
+      w("Em", 240, 70),
+      w("I", 10, 100),
+      w("found", 60, 100),
+      w("me", 290, 100),
+    ];
+    const rows = clusterRows(words);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].map((r) => r.text)).toEqual(["G", "Em"]);
+    expect(rows[1][0].text).toBe("I");
+  });
+});
+
+describe("rowsToChordPro alignment", () => {
+  it("places each chord above the character it sits over", () => {
+    // "I found a love for me" with G over "found", Em over "for".
+    const lyric = [
+      w("I", 10, 100),
+      w("found", 60, 100),
+      w("a", 150, 100),
+      w("love", 175, 100),
+      w("for", 240, 100),
+      w("me", 290, 100),
+    ];
+    const chords = [w("G", 60, 78), w("Em", 240, 78)];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toBe("I [G]found a love [Em]for me");
+  });
+
+  it("brackets a chord that starts before the first word", () => {
+    const lyric = [w("Darling", 40, 100), w("just", 130, 100)];
+    const chords = [w("G", 10, 78)];
+    expect(rowsToChordPro([chords, lyric])).toBe("[G]Darling just");
+  });
+});
+
+describe("rowsToChordPro row kinds", () => {
+  it("keeps an intro chord line with no lyrics as bracketed chords", () => {
+    const out = rowsToChordPro([[w("G", 10, 20)]]);
+    expect(out).toBe("[G]");
+  });
+
+  it("preserves measure bars in a turnaround line", () => {
+    const row = [
+      w("|", 10, 20),
+      w("G", 30, 20),
+      w("D/F#", 60, 20),
+      w("Em", 120, 20),
+      w("D", 170, 20),
+      w("|", 200, 20),
+      w("C", 220, 20),
+      w("D", 260, 20),
+      w("|", 300, 20),
+    ];
+    expect(rowsToChordPro([row])).toBe("| [G] [D/F#] [Em] [D] | [C] [D] |");
+  });
+
+  it("converts section headers to comments", () => {
+    const out = rowsToChordPro([[w("[Chorus]", 10, 20)]]);
+    expect(out).toContain("{comment: Chorus}");
+  });
+});
+
+describe("wordsToChordPro end-to-end", () => {
+  it("handles a small multi-section snippet", () => {
+    const words = [
+      w("[Verse]", 10, 10),
+      w("G", 60, 40),
+      w("Em", 240, 40),
+      w("I", 10, 62),
+      w("found", 60, 62),
+      w("love", 240, 62),
+    ];
+    const out = wordsToChordPro(words);
+    expect(out).toContain("{comment: Verse}");
+    expect(out).toContain("[G]found");
+    expect(out).toContain("[Em]love");
+  });
+});
