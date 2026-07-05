@@ -2,19 +2,16 @@ import Link from "next/link";
 import { Music, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import type { Song } from "@/types/domain";
+import { SongLibrary } from "@/components/songs/song-library";
 
 export default async function SongsPage() {
   const supabase = await createClient();
   const { data: songs } = await supabase
     .from("songs")
-    .select("id, title, artist, original_key")
+    .select("id, title, artist, original_key, tags")
     .order("title", { ascending: true });
 
-  const list = (songs ?? []) as Pick<
-    Song,
-    "id" | "title" | "artist" | "original_key"
-  >[];
+  const list = songs ?? [];
 
   return (
     <div>
@@ -41,30 +38,7 @@ export default async function SongsPage() {
           </Link>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border">
-          {list.map((song) => (
-            <li key={song.id}>
-              <Link
-                href={`/songs/${song.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-surface-2"
-              >
-                <span>
-                  <span className="font-medium">{song.title}</span>
-                  {song.artist && (
-                    <span className="ml-2 text-sm text-muted">
-                      {song.artist}
-                    </span>
-                  )}
-                </span>
-                {song.original_key && (
-                  <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted">
-                    {song.original_key}
-                  </span>
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <SongLibrary songs={list} />
       )}
     </div>
   );
