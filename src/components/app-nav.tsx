@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ListMusic, LogOut, Music, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SyncIndicator } from "@/components/offline/sync-indicator";
 
 const links = [
   { href: "/songs", label: "Songs", icon: Music },
@@ -43,16 +44,19 @@ export function AppNav() {
           );
         })}
 
-        <form action="/auth/signout" method="post" className="ml-auto">
-          <button
-            type="submit"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign out</span>
-          </button>
-        </form>
+        <div className="ml-auto flex items-center gap-1">
+          <SyncIndicator />
+          <form action="/auth/signout" method="post">
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </form>
+        </div>
       </nav>
     </header>
   );
