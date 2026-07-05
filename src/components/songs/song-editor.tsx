@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Wand2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { chordsOverWordsToChordPro, KEYS } from "@/lib/chordpro";
+import { imageToChordPro, imageFromClipboard } from "@/lib/ocr-run";
 import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
 import type { Song } from "@/types/domain";
@@ -21,11 +22,41 @@ const labelClass = "mb-1 block text-xs font-medium text-muted";
 export function SongEditor({ song, action }: SongEditorProps) {
   const [body, setBody] = useState(song?.body ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [ocr, setOcr] = useState<{ busy: boolean; progress: number }>({
+    busy: false,
+    progress: 0,
+  });
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   function handleConvert() {
     // Interpret the current textarea as chords-over-lyrics and rewrite it as
     // ChordPro. Handy right after pasting a chart off the web.
     setBody(chordsOverWordsToChordPro(body));
+  }
+
+  /** Insert text at the textarea caret (or append), keeping React state in sync. */
+  function insertAtCaret(text: string) {
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? body.length;
+    const end = el?.selectionEnd ?? body.length;
+    const pad = start > 0 && body[start - 1] !== "\n" ? "\n" : "";
+    setBody(body.slice(0, start) + pad + text + body.slice(end));
+  }
+
+  /** Paste a screenshot of a chart → OCR it into ChordPro at the caret. */
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const image = imageFromClipboard(e.clipboardData?.items);
+    if (!image) return; // let normal text paste happen
+    e.preventDefault();
+    setOcr({ busy: true, progress: 0 });
+    try {
+      const chordpro = await imageToChordPro(image, (p) =>
+        setOcr({ busy: true, progress: p }),
+      );
+      insertAtCaret(chordpro);
+    } finally {
+      setOcr({ busy: false, progress: 0 });
+    }
   }
 
   return (
@@ -112,7 +143,9 @@ export function SongEditor({ song, action }: SongEditorProps) {
         <div className="mb-1 flex items-center justify-between">
           <label className={labelClass} htmlFor="body">
             Chords &amp; lyrics{" "}
-            <span className="text-muted">(ChordPro: [G]like [C]this)</span>
+            <span className="text-muted">
+              — or paste a screenshot to read it in
+            </span>
           </label>
           <Button
             type="button"
@@ -125,20 +158,35 @@ export function SongEditor({ song, action }: SongEditorProps) {
           </Button>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          <textarea
-            id="body"
-            name="body"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            spellCheck={false}
-            className={`${field} min-h-80 font-mono`}
-            placeholder={"{start_of_verse}\n[G]Amazing [C]grace...\n{end_of_verse}"}
-          />
+          <div className="relative">
+            <textarea
+              id="body"
+              name="body"
+              ref={bodyRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onPaste={handlePaste}
+              spellCheck={false}
+              className={`${field} min-h-80 w-full font-mono`}
+              placeholder={
+                "{start_of_verse}\n[G]Amazing [C]grace...\n{end_of_verse}\n\n(Tip: paste a screenshot of a chart here)"
+              }
+            />
+            {ocr.busy && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-background/80 text-sm">
+                <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                <span>Reading chart… {ocr.progress}%</span>
+              </div>
+            )}
+          </div>
           <div className="min-h-80 overflow-auto rounded-lg border border-border bg-surface p-3">
             {body.trim() ? (
               <ChordChart source={body} />
             ) : (
-              <p className="text-sm text-muted">Preview appears here.</p>
+              <p className="flex items-center gap-1.5 text-sm text-muted">
+                <ImagePlus className="h-4 w-4" /> Preview appears here — type
+                ChordPro or paste a screenshot.
+              </p>
             )}
           </div>
         </div>

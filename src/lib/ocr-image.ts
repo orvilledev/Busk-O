@@ -3,8 +3,8 @@
  * grayscale input, so we upscale small photos and push the contrast before
  * handing it over. Runs on a canvas in the browser.
  */
-export async function preprocessForOcr(file: File): Promise<HTMLCanvasElement> {
-  const bitmap = await createImageBitmap(file);
+export async function preprocessForOcr(source: Blob): Promise<HTMLCanvasElement> {
+  const bitmap = await createImageBitmap(source);
 
   // Aim for ~1600px on the long edge; upscale small shots, leave big ones.
   const target = 1600;
