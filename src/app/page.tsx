@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { supabaseConfigured } from "@/lib/supabase/config";
 
-// Middleware sends unauthenticated users to /login; the app lives at /songs.
+// With a backend: middleware sends guests to /login; the app lives at /songs.
+// Without one: land on the backend-free "try" playground.
 export default function Home() {
-  redirect("/songs");
+  redirect(supabaseConfigured ? "/songs" : "/try");
 }

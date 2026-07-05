@@ -1,14 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { supabaseConfigured } from "./config";
 
 /** Public routes reachable without a session. */
-const PUBLIC_PATHS = ["/login", "/auth", "/offline"];
+const PUBLIC_PATHS = ["/login", "/auth", "/offline", "/try"];
 
 /**
  * Refreshes the Supabase auth session on every request and guards private
  * routes. Must run in middleware so cookies stay fresh for Server Components.
  */
 export async function updateSession(request: NextRequest) {
+  // No backend configured → skip auth entirely and let "try" mode run.
+  if (!supabaseConfigured) return NextResponse.next({ request });
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
