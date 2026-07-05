@@ -1,0 +1,27 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { AppNav } from "@/components/app-nav";
+
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // Middleware already guards these routes; this is defense-in-depth and
+  // gives Server Components a guaranteed user.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  return (
+    <div className="flex min-h-full flex-1 flex-col">
+      <AppNav />
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
+        {children}
+      </main>
+    </div>
+  );
+}
