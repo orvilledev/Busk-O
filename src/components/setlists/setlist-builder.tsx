@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { KEYS } from "@/lib/chordpro";
+import { KEYS } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ExportMenu } from "./export-menu";

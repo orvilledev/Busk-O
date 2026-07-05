@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { DEMO_SONGS } from "@/lib/demo-songs";
-import { KEYS, transposeKey, type Key } from "@/lib/chordpro";
+import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

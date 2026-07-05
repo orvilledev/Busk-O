@@ -18,7 +18,7 @@ import {
   semitonesBetween,
   transposeKey,
   type Key,
-} from "@/lib/chordpro";
+} from "@/lib/keys";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { cn } from "@/lib/utils";
 

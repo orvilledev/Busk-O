@@ -10,7 +10,7 @@ import {
   Type,
   RotateCcw,
 } from "lucide-react";
-import { KEYS, transposeKey, type Key } from "@/lib/chordpro";
+import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
 import type { Song } from "@/types/domain";
