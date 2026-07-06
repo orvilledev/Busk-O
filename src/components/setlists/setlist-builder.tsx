@@ -65,8 +65,16 @@ export function SetlistBuilder({
   }
 
   function remove(id: string) {
+    const prev = items;
     setItems((prev) => prev.filter((i) => i.id !== id));
-    startTransition(() => removeSetlistSong(id, setlistId));
+    startTransition(async () => {
+      try {
+        await removeSetlistSong(id, setlistId);
+      } catch {
+        // If delete fails, revert the optimistic removal
+        setItems(prev);
+      }
+    });
   }
 
   async function add(songId: string) {
