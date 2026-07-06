@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -27,7 +26,10 @@ import {
   updateSetlistSong,
 } from "@/app/(app)/setlists/actions";
 
-type SongPick = Pick<Song, "id" | "title" | "artist">;
+type SongPick = Pick<
+  Song,
+  "id" | "title" | "artist" | "original_key" | "body"
+>;
 
 export function SetlistBuilder({
   setlistId,
@@ -42,7 +44,6 @@ export function SetlistBuilder({
   initialItems: SetlistSongWithSong[];
   availableSongs: SongPick[];
 }) {
-  const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [picking, setPicking] = useState(false);
   const [, startTransition] = useTransition();
@@ -69,9 +70,16 @@ export function SetlistBuilder({
   }
 
   async function add(songId: string) {
-    await addSongToSetlist(setlistId, songId);
+    const song = availableSongs.find((s) => s.id === songId);
+    if (!song) return;
     setPicking(false);
-    router.refresh();
+    // Optimistically append using the row the server returns, so the list
+    // updates instantly with no full remount/flicker.
+    const row = await addSongToSetlist(setlistId, songId);
+    setItems((prev) => [
+      ...prev,
+      { ...row, song: song as Song } as SetlistSongWithSong,
+    ]);
   }
 
   const exportData: ExportSetlist = {

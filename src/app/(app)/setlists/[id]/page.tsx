@@ -22,15 +22,15 @@ export default async function SetlistPage({
         .select("*, song:songs(*)")
         .eq("setlist_id", id)
         .order("position", { ascending: true }),
-      supabase.from("songs").select("id, title, artist").order("title"),
+      supabase
+        .from("songs")
+        .select("id, title, artist, original_key, body")
+        .order("title"),
     ]);
 
   if (!setlist) notFound();
 
   const initialItems = (items ?? []) as SetlistSongWithSong[];
-  // Remount the builder when the server's song set changes (e.g. after adding
-  // a song + router.refresh) so its local state re-initializes from fresh data.
-  const builderKey = initialItems.map((i) => i.id).join("-") || "empty";
 
   return (
     <div>
@@ -42,7 +42,6 @@ export default async function SetlistPage({
       </Link>
       <SetlistHeader setlist={setlist as Setlist} />
       <SetlistBuilder
-        key={builderKey}
         setlistId={id}
         setlistName={setlist.name}
         eventDate={setlist.event_date}

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { SetlistSong } from "@/types/domain";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -120,12 +121,15 @@ export async function addSongToSetlist(setlistId: string, songId: string) {
     .maybeSingle();
 
   const position = (last?.position ?? -1) + 1;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("setlist_songs")
-    .insert({ setlist_id: setlistId, song_id: songId, position });
+    .insert({ setlist_id: setlistId, song_id: songId, position })
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
   revalidatePath(`/setlists/${setlistId}`);
+  return data as SetlistSong;
 }
 
 export async function removeSetlistSong(
