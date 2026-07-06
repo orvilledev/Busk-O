@@ -10,6 +10,7 @@ import {
   capoFret,
   toLyricSections,
   toPlainLyrics,
+  detectKey,
 } from "./chordpro";
 
 const AMAZING_GRACE = `{title: Amazing Grace}
@@ -106,6 +107,26 @@ describe("toPlainLyrics", () => {
     expect(text).toContain("Amazing grace how sweet the sound");
     expect(text).toContain("\n\n");
     expect(text).not.toContain("[G]");
+  });
+});
+
+describe("detectKey", () => {
+  it("uses a {key} directive when present", () => {
+    expect(detectKey(AMAZING_GRACE)).toBe("G");
+  });
+
+  it("falls back to the first chord's root", () => {
+    expect(detectKey("[G]You look so [Dsus4]wonderful [Cadd9]in your dress")).toBe(
+      "G",
+    );
+  });
+
+  it("normalizes a flat root to its sharp spelling", () => {
+    expect(detectKey("[Bb]Hello [F]world")).toBe("A#");
+  });
+
+  it("returns null when there are no chords", () => {
+    expect(detectKey("just lyrics, no chords")).toBeNull();
   });
 });
 

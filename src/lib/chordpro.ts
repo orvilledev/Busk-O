@@ -56,6 +56,29 @@ export function transpose(song: Song, semitones: number): Song {
   return song.transpose(semitones);
 }
 
+const FLAT_TO_SHARP: Record<string, string> = {
+  Db: "C#",
+  Eb: "D#",
+  Gb: "F#",
+  Ab: "G#",
+  Bb: "A#",
+};
+
+/**
+ * Best guess at a song's key from ChordPro. Prefers a `{key: ...}` directive;
+ * otherwise falls back to the root of the first chord (a common, good-enough
+ * heuristic for lead sheets). Flats are normalized to the sharp spelling used
+ * by the key picker. Returns null if there are no chords. It's a starting
+ * point the user can correct, not gospel.
+ */
+export function detectKey(body: string): string | null {
+  const declared = getKey(parse(body));
+  if (declared) return declared;
+  const first = body.match(/\[([A-G][#b]?)/);
+  if (!first) return null;
+  return FLAT_TO_SHARP[first[1]] ?? first[1];
+}
+
 /** A block of lyrics (one paragraph) with its section role. */
 export interface LyricSection {
   isChorus: boolean;

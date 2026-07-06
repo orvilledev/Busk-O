@@ -8,9 +8,16 @@ import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
 import type { Song } from "@/types/domain";
 
+/** Prefill values for create mode (e.g. from an OCR import). */
+export type SongEditorDefaults = Partial<
+  Pick<Song, "title" | "artist" | "original_key" | "tempo" | "tags" | "body">
+>;
+
 interface SongEditorProps {
   /** Existing song when editing; omitted when creating. */
   song?: Song;
+  /** Initial values when creating a new song (ignored if `song` is set). */
+  defaults?: SongEditorDefaults;
   /** Server action bound to receive the form data. */
   action: (formData: FormData) => Promise<void>;
 }
@@ -19,8 +26,9 @@ const field =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-accent";
 const labelClass = "mb-1 block text-xs font-medium text-muted";
 
-export function SongEditor({ song, action }: SongEditorProps) {
-  const [body, setBody] = useState(song?.body ?? "");
+export function SongEditor({ song, defaults, action }: SongEditorProps) {
+  const initial: SongEditorDefaults = song ?? defaults ?? {};
+  const [body, setBody] = useState(initial.body ?? "");
   const [submitting, setSubmitting] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const { ocr, handlePaste } = useOcrPaste(body, setBody, bodyRef);
@@ -46,7 +54,7 @@ export function SongEditor({ song, action }: SongEditorProps) {
             id="title"
             name="title"
             required
-            defaultValue={song?.title ?? ""}
+            defaultValue={initial.title ?? ""}
             placeholder="Amazing Grace"
             className={field}
           />
@@ -58,7 +66,7 @@ export function SongEditor({ song, action }: SongEditorProps) {
           <input
             id="artist"
             name="artist"
-            defaultValue={song?.artist ?? ""}
+            defaultValue={initial.artist ?? ""}
             placeholder="Traditional"
             className={field}
           />
@@ -71,7 +79,7 @@ export function SongEditor({ song, action }: SongEditorProps) {
             <select
               id="original_key"
               name="original_key"
-              defaultValue={song?.original_key ?? ""}
+              defaultValue={initial.original_key ?? ""}
               className={field}
             >
               <option value="">—</option>
@@ -91,7 +99,7 @@ export function SongEditor({ song, action }: SongEditorProps) {
               name="tempo"
               type="number"
               min={0}
-              defaultValue={song?.tempo ?? ""}
+              defaultValue={initial.tempo ?? ""}
               placeholder="BPM"
               className={field}
             />
@@ -104,7 +112,7 @@ export function SongEditor({ song, action }: SongEditorProps) {
           <input
             id="tags"
             name="tags"
-            defaultValue={song?.tags?.join(", ") ?? ""}
+            defaultValue={initial.tags?.join(", ") ?? ""}
             placeholder="hymn, communion, slow"
             className={field}
           />

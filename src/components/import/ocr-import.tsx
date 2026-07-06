@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardPaste, ImagePlus, Loader2, ScanLine, Wand2 } from "lucide-react";
-import { chordsOverWordsToChordPro } from "@/lib/chordpro";
+import { ClipboardPaste, ImagePlus, Loader2 } from "lucide-react";
+import { detectKey } from "@/lib/chordpro";
 import { imageToChordPro, imageFromClipboard } from "@/lib/ocr-run";
-import { ChordChart } from "@/components/songs/chord-chart";
-import { Button } from "@/components/ui/button";
+import { SongEditor } from "@/components/songs/song-editor";
 import { cn } from "@/lib/utils";
 import { createSong } from "@/app/(app)/songs/actions";
 
@@ -15,19 +14,14 @@ export function OcrImport() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
-  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [saving, setSaving] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-
-  const field =
-    "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-accent";
 
   const recognize = useCallback(async (file: File) => {
     setStatus("recognizing");
     setProgress(0);
     try {
-      // Always lands in the editor for review — never saved blind.
+      // Result lands in the editor below for review — never saved blind.
       setBody(await imageToChordPro(file, setProgress));
     } finally {
       setStatus("ready");
@@ -41,15 +35,17 @@ export function OcrImport() {
       setImageUrl(URL.createObjectURL(file));
       setStatus("idle");
       setBody("");
-      setTitle((t) => t || file.name.replace(/\.[^.]+$/, "") || "Pasted chart");
       recognize(file);
     },
     [recognize],
   );
 
-  // Paste a screenshot anywhere on the page (no need to click first).
+  // Paste a screenshot anywhere on the page — unless a field is focused, in
+  // which case that field's own paste handler takes it.
   useEffect(() => {
     function onPaste(e: ClipboardEvent) {
+      const el = document.activeElement?.tagName;
+      if (el === "TEXTAREA" || el === "INPUT") return;
       const image = imageFromClipboard(e.clipboardData?.items);
       if (image) {
         e.preventDefault();
@@ -60,26 +56,15 @@ export function OcrImport() {
     return () => window.removeEventListener("paste", onPaste);
   }, [ingest]);
 
-  async function save() {
-    if (!title.trim() || !body.trim()) return;
-    setSaving(true);
-    const fd = new FormData();
-    fd.set("title", title);
-    fd.set("body", body);
-    try {
-      await createSong(fd); // redirects to the new song on success
-    } finally {
-      setSaving(false);
-    }
-  }
+  const ready = status === "ready" && body.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">
         Choose, drop, or <strong className="text-foreground">paste</strong>{" "}
         (Ctrl/⌘+V) a chords-over-lyrics chart. We read it with OCR and align the
-        chords over the right syllables into ChordPro. OCR is never perfect —
-        tweak the result in the editor, then save.
+        chords over the right syllables into ChordPro, then you fill in the
+        details and save. OCR is never perfect — review before saving.
       </p>
 
       <label
@@ -94,7 +79,7 @@ export function OcrImport() {
           ingest(e.dataTransfer.files?.[0]);
         }}
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-surface py-10 text-center transition-colors hover:border-accent",
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-surface py-8 text-center transition-colors hover:border-accent",
           dragActive ? "border-accent bg-accent/5" : "border-border",
         )}
       >
@@ -114,77 +99,36 @@ export function OcrImport() {
         />
       </label>
 
-      {imageUrl && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-3">
+      {status === "recognizing" && (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
+          <Loader2 className="h-4 w-4 animate-spin" /> Reading chart… {progress}%
+        </div>
+      )}
+
+      {imageUrl && ready && (
+        <div className="grid gap-4 lg:grid-cols-[200px_1fr]">
+          <div>
+            <span className="mb-1 block text-xs font-medium text-muted">
+              Source image
+            </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt="Source chart"
-              className="max-h-64 w-full rounded-lg border border-border object-contain"
-            />
-            {status === "recognizing" && (
-              <div className="flex items-center gap-2 text-sm text-muted">
-                <Loader2 className="h-4 w-4 animate-spin" /> Reading text… {progress}%
-              </div>
-            )}
-
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Song title"
-              className={field}
-            />
-
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted">
-                Recognized text (edit freely)
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setBody(chordsOverWordsToChordPro(body))}
-                disabled={!body.trim()}
-                title="Convert chords-over-lyrics to ChordPro"
-              >
-                <Wand2 className="h-4 w-4" /> To ChordPro
-              </Button>
-            </div>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              spellCheck={false}
-              className={`${field} min-h-64 font-mono`}
-              placeholder="Recognized text appears here…"
+              className="w-full rounded-lg border border-border object-contain"
             />
           </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted">Chart preview</span>
-            <div className="min-h-64 flex-1 overflow-auto rounded-lg border border-border bg-surface p-3">
-              {body.trim() ? (
-                <ChordChart source={body} />
-              ) : (
-                <p className="text-sm text-muted">
-                  Convert the text to see the chart.
-                </p>
-              )}
-            </div>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold">
+              Details — the key is auto-detected; add the rest, then save
+            </h2>
+            {/* Remount per image so the prefilled defaults refresh. */}
+            <SongEditor
+              key={imageUrl}
+              action={createSong}
+              defaults={{ body, original_key: detectKey(body) ?? undefined }}
+            />
           </div>
-        </div>
-      )}
-
-      {imageUrl && (
-        <div className="flex justify-end">
-          <Button onClick={save} disabled={saving || !title.trim() || !body.trim()}>
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ScanLine className="h-4 w-4" />
-            )}
-            Save song
-          </Button>
         </div>
       )}
     </div>
