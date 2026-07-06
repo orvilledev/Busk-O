@@ -7,19 +7,20 @@ import type { Song } from "@/types/domain";
 
 export default async function FavoritesPage() {
   const supabase = await createClient();
-  // Filter in JS so this page still works before the favorites migration runs.
-  const { data: songs } = await supabase
+  // Query only favorite songs with indexed favorite column for speed
+  const { data: favorites } = await supabase
     .from("songs")
-    .select("*")
+    .select("id,title,artist,original_key,tags,favorite")
+    .eq("favorite", true)
     .order("title", { ascending: true });
 
-  const favorites = ((songs ?? []) as Song[]).filter((s) => s.favorite);
+  const list = (favorites ?? []) as Song[];
 
   return (
     <div>
       <h1 className="mb-6 text-xl font-bold">Favorites</h1>
 
-      {favorites.length === 0 ? (
+      {list.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
           <Star className="mb-3 h-8 w-8 text-muted" />
           <p className="font-medium">No favorites yet</p>
@@ -33,7 +34,7 @@ export default async function FavoritesPage() {
           </Link>
         </div>
       ) : (
-        <SongLibrary songs={favorites} />
+        <SongLibrary songs={list} />
       )}
     </div>
   );
