@@ -17,7 +17,7 @@ export function FavoriteButton({
   iconClassName?: string;
 }) {
   const [fav, setFav] = useState(initial);
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
 
   function toggle(e: React.MouseEvent) {
     // The button often lives inside/next to a link — don't navigate.
@@ -28,8 +28,10 @@ export function FavoriteButton({
     startTransition(async () => {
       try {
         await toggleFavorite(songId, next);
+        // After successful save, keep the optimistic state since the server
+        // has been revalidated and will send fresh data on the next page load.
       } catch {
-        setFav(!next); // revert on failure
+        setFav(!next); // revert only on failure
       }
     });
   }

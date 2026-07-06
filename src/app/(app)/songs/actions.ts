@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/lib/supabase/server";
 
 export interface SongInput {
   title: string;
@@ -82,13 +82,14 @@ export async function deleteSong(id: string) {
 }
 
 export async function toggleFavorite(id: string, favorite: boolean) {
-  const supabase = await createClient();
+  const { supabase } = await requireUser();
   const { error } = await supabase
     .from("songs")
     .update({ favorite })
     .eq("id", id);
   if (error) throw new Error(error.message);
 
+  // Revalidate all pages that might show this song's favorite state
   revalidatePath("/songs");
   revalidatePath("/favorites");
   revalidatePath(`/songs/${id}`);

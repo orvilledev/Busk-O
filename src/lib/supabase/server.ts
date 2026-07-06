@@ -27,3 +27,13 @@ export async function createClient() {
     },
   );
 }
+
+/** Ensure user is authenticated. Throws if not logged in. */
+export async function requireUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  return { supabase, user };
+}
