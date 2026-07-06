@@ -23,14 +23,34 @@ export interface OcrWord {
 const CHORD_RE =
   /^[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|M)?\d{0,2}(?:sus\d?)?(?:add\d{1,2})?(?:\/[A-G][#b]?)?$/;
 
-/** Tokens that may appear on a chord line without disqualifying it. */
-const MEASURE_TOKENS = new Set(["|", "%", "||", ":", "x2", "x3", "x4"]);
+/** Bar/measure separators that may appear on a chord line. */
+const MEASURE_TOKENS = new Set(["|", "%", "||", ":"]);
+
+/** Repeat markers like x2, x3, 4x, (x2) — kept but not treated as chords. */
+const REPEAT_RE = /^\(?(?:x\d+|\d+x)\)?$/i;
 
 const SECTION_RE =
   /^\[?\s*(intro|verses?|pre[-\s]?chorus|chorus|bridge|interlude|outro|tag|refrain|solo|ending|coda|instrumental|hook)\b.*?\]?\s*$/i;
 
 export function isChord(token: string): boolean {
   return CHORD_RE.test(token);
+}
+
+/**
+ * Strip OCR punctuation noise wrapping a token so real chords survive:
+ * "«x3" → "x3", "(Cadd9)" → "Cadd9", "|G" → "G". Slash chords (D/F#) and
+ * accidentals (C#) are preserved.
+ */
+export function normalizeToken(t: string): string {
+  return t
+    .trim()
+    .replace(/^[«»"'“”‘’(\[{|]+/, "")
+    .replace(/[«»"'“”‘’)\]}|,.:;]+$/, "");
+}
+
+/** A token that belongs on a chord line but isn't itself a chord. */
+function isChordLineNoise(t: string): boolean {
+  return t === "" || MEASURE_TOKENS.has(t) || REPEAT_RE.test(t);
 }
 
 /** Median of a numeric list (0 for empty). */
@@ -85,8 +105,8 @@ function classifyRow(row: OcrWord[]): RowKind {
   if (SECTION_RE.test(text)) return "section";
 
   const tokens = row
-    .map((w) => w.text)
-    .filter((t) => t && !MEASURE_TOKENS.has(t));
+    .map((w) => normalizeToken(w.text))
+    .filter((t) => !isChordLineNoise(t));
   if (tokens.length > 0 && tokens.every(isChord)) return "chord";
   return "lyric";
 }
@@ -117,11 +137,14 @@ function layoutLyric(row: OcrWord[]): { text: string; charX: number[] } {
 function mergeChordLyric(chords: OcrWord[], lyricRow: OcrWord[]): string {
   const { text, charX } = layoutLyric(lyricRow);
 
-  const insertions = chords.map((c) => {
-    let idx = charX.findIndex((x) => x >= c.x0);
-    if (idx === -1) idx = text.length; // chord past the last character
-    return { idx, chord: c.text };
-  });
+  const insertions = chords
+    .map((c) => ({ x0: c.x0, chord: normalizeToken(c.text) }))
+    .filter((c) => isChord(c.chord)) // drop bars / repeat markers / noise
+    .map(({ x0, chord }) => {
+      let idx = charX.findIndex((x) => x >= x0);
+      if (idx === -1) idx = text.length; // chord past the last character
+      return { idx, chord };
+    });
 
   // Apply right-to-left so earlier indices stay valid.
   insertions.sort((a, b) => b.idx - a.idx);
@@ -135,8 +158,15 @@ function mergeChordLyric(chords: OcrWord[], lyricRow: OcrWord[]): string {
 /** A chord-only line (intro, turnaround, measures) → bracketed chords. */
 function chordOnlyLine(row: OcrWord[]): string {
   return row
-    .map((w) => (MEASURE_TOKENS.has(w.text) ? w.text : `[${w.text}]`))
-    .join(" ");
+    .map((w) => {
+      const t = normalizeToken(w.text);
+      if (isChord(t)) return `[${t}]`;
+      if (MEASURE_TOKENS.has(t)) return t;
+      return t || w.text; // repeat markers / annotations kept literally
+    })
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 }
 
 function sectionLabel(row: OcrWord[]): string {

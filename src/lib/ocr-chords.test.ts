@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isChord,
+  normalizeToken,
   clusterRows,
   rowsToChordPro,
   wordsToChordPro,
@@ -92,6 +93,40 @@ describe("rowsToChordPro row kinds", () => {
   it("converts section headers to comments", () => {
     const out = rowsToChordPro([[w("[Chorus]", 10, 20)]]);
     expect(out).toContain("{comment: Chorus}");
+  });
+});
+
+describe("normalizeToken", () => {
+  it("strips wrapping OCR punctuation but keeps chord characters", () => {
+    expect(normalizeToken("«x3")).toBe("x3");
+    expect(normalizeToken("(Cadd9)")).toBe("Cadd9");
+    expect(normalizeToken("|G")).toBe("G");
+    expect(normalizeToken("D/F#")).toBe("D/F#");
+    expect(normalizeToken("C#")).toBe("C#");
+  });
+});
+
+describe("noise tolerance on chord rows", () => {
+  it("keeps an intro line as chords despite a misread repeat marker", () => {
+    // "G Dsus4 Cadd9 «x3" — the «x3 must not disqualify the chord row.
+    const row = [
+      w("G", 20, 20),
+      w("Dsus4", 60, 20),
+      w("Cadd9", 140, 20),
+      w("«x3", 230, 20),
+    ];
+    expect(rowsToChordPro([row])).toBe("[G] [Dsus4] [Cadd9] x3");
+  });
+
+  it("brackets a parenthesized chord", () => {
+    expect(rowsToChordPro([[w("(Cadd9)", 10, 20)]])).toBe("[Cadd9]");
+  });
+
+  it("drops repeat markers when merging chords over a lyric", () => {
+    const chords = [w("G", 20, 20), w("x3", 200, 20)];
+    const lyric = [w("You", 20, 46), w("look", 70, 46)];
+    // x3 is a repeat marker, not a chord — only [G] should be inserted.
+    expect(rowsToChordPro([chords, lyric])).toBe("[G]You look");
   });
 });
 
