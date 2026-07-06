@@ -53,6 +53,24 @@ function isChordLineNoise(t: string): boolean {
   return t === "" || MEASURE_TOKENS.has(t) || REPEAT_RE.test(t);
 }
 
+/**
+ * OCR frequently reads a capital "I" as the digit "1" (both are a bare vertical
+ * stroke). Repair that in a *lyric* word only:
+ * - a lone "1" (optionally with trailing punctuation): "1" → "I", "1," → "I,"
+ * - a word-initial "1" that can't be a number, i.e. followed by a letter or
+ *   apostrophe: "1f" → "If", "1've" → "I've" — but not ordinals ("1st") or
+ *   real numbers ("10", "1999").
+ * Replacements are the same length, so chord-over-syllable alignment is
+ * unaffected. Never applied to chords or numbers.
+ */
+export function fixLyricOcr(word: string): string {
+  if (/^1[^\w'#/]*$/.test(word)) return "I" + word.slice(1);
+  if (/^1['A-Za-z]/.test(word) && !/^1(?:st|nd|rd|th)\b/i.test(word)) {
+    return "I" + word.slice(1);
+  }
+  return word;
+}
+
 /** Median of a numeric list (0 for empty). */
 function median(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -123,10 +141,11 @@ function layoutLyric(row: OcrWord[]): { text: string; charX: number[] } {
       // word's left edge aligns to its first letter, not the space.
       charX.push(prevX1);
     }
+    const wt = fixLyricOcr(w.text); // same length, so coords stay aligned
     const span = Math.max(1, w.x1 - w.x0);
-    for (let k = 0; k < w.text.length; k++) {
-      text += w.text[k];
-      charX.push(w.x0 + (span * k) / w.text.length);
+    for (let k = 0; k < wt.length; k++) {
+      text += wt[k];
+      charX.push(w.x0 + (span * k) / wt.length);
     }
     prevX1 = w.x1;
   }
@@ -202,7 +221,7 @@ export function rowsToChordPro(rows: OcrWord[][]): string {
     }
 
     // Plain lyric line with no chords above it.
-    out.push(rows[i].map((w) => w.text).join(" "));
+    out.push(rows[i].map((w) => fixLyricOcr(w.text)).join(" "));
   }
 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();

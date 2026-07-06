@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isChord,
   normalizeToken,
+  fixLyricOcr,
   clusterRows,
   rowsToChordPro,
   wordsToChordPro,
@@ -103,6 +104,36 @@ describe("normalizeToken", () => {
     expect(normalizeToken("|G")).toBe("G");
     expect(normalizeToken("D/F#")).toBe("D/F#");
     expect(normalizeToken("C#")).toBe("C#");
+  });
+});
+
+describe("fixLyricOcr (I misread as 1)", () => {
+  it("fixes a lone I and word-initial I", () => {
+    expect(fixLyricOcr("1")).toBe("I");
+    expect(fixLyricOcr("1,")).toBe("I,");
+    expect(fixLyricOcr("1f")).toBe("If");
+    expect(fixLyricOcr("1t")).toBe("It");
+    expect(fixLyricOcr("1've")).toBe("I've");
+    expect(fixLyricOcr("1'll")).toBe("I'll");
+  });
+
+  it("leaves real numbers and ordinals alone", () => {
+    expect(fixLyricOcr("10")).toBe("10");
+    expect(fixLyricOcr("1999")).toBe("1999");
+    expect(fixLyricOcr("1st")).toBe("1st");
+    expect(fixLyricOcr("love")).toBe("love");
+  });
+
+  it("corrects lyrics when building a chord line", () => {
+    // "I love your hair" with a G over "I" that OCR read as "1".
+    const chords = [w("G", 20, 20)];
+    const lyric = [w("1", 20, 46), w("love", 45, 46), w("your", 100, 46)];
+    expect(rowsToChordPro([chords, lyric])).toBe("[G]I love your");
+  });
+
+  it("does not corrupt a section number like Verse 1", () => {
+    const out = rowsToChordPro([[w("[Verse", 10, 20), w("1]", 80, 20)]]);
+    expect(out).toContain("{comment: Verse 1}");
   });
 });
 
