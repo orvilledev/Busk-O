@@ -20,21 +20,21 @@ export default async function SetlistsPage() {
 
       <form
         action={createSetlist}
-        className="mb-6 flex flex-wrap gap-2 rounded-xl border border-border bg-surface p-3"
+        className="mb-6 flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 sm:flex-row sm:flex-wrap"
       >
         <input
           name="name"
           required
           placeholder="Sunday Morning, Park Busk…"
-          className="min-w-48 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-accent"
+          className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-accent"
         />
         <input
           name="event_date"
           type="date"
           className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <Button type="submit">
-          <Plus className="h-4 w-4" /> New setlist
+        <Button type="submit" className="w-full sm:w-auto">
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New setlist</span>
         </Button>
       </form>
 

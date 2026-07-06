@@ -15,11 +15,11 @@ export default async function SongsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <h1 className="text-xl font-bold">Songs</h1>
-        <Link href="/songs/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4" /> New song
+        <Link href="/songs/new" className="w-full sm:w-auto">
+          <Button size="sm" className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New song</span>
           </Button>
         </Link>
       </div>

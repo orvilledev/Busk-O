@@ -29,7 +29,7 @@ export function ChordChart({
 
   return (
     <div
-      className={cn("flex flex-col gap-4 leading-tight", className)}
+      className={cn("flex flex-col gap-3 leading-relaxed text-sm sm:gap-4 sm:text-base", className)}
       style={{ fontSize: `${fontScale}rem` }}
     >
       {paragraphs.map((paragraph, pi) => {
@@ -82,16 +82,16 @@ function ChartLine({ line }: { line: Line }) {
   const hasChords = pairs.some((p) => p.chords);
 
   return (
-    <div className="flex flex-wrap">
+    <div className="flex flex-wrap items-start gap-0.5">
       {pairs.map((pair, i) => (
         <span key={i} className="flex flex-col">
           {hasChords && (
-            <span className="pr-2 font-mono font-semibold text-chord">
-              {pair.chords || " "}
+            <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
+              {pair.chords || " "}
             </span>
           )}
-          <span className="whitespace-pre-wrap">
-            {pair.lyrics || " "}
+          <span className="whitespace-pre-wrap break-words">
+            {pair.lyrics || " "}
           </span>
         </span>
       ))}
