@@ -27,6 +27,11 @@ export default async function SetlistPage({
 
   if (!setlist) notFound();
 
+  const initialItems = (items ?? []) as SetlistSongWithSong[];
+  // Remount the builder when the server's song set changes (e.g. after adding
+  // a song + router.refresh) so its local state re-initializes from fresh data.
+  const builderKey = initialItems.map((i) => i.id).join("-") || "empty";
+
   return (
     <div>
       <Link
@@ -37,10 +42,11 @@ export default async function SetlistPage({
       </Link>
       <SetlistHeader setlist={setlist as Setlist} />
       <SetlistBuilder
+        key={builderKey}
         setlistId={id}
         setlistName={setlist.name}
         eventDate={setlist.event_date}
-        initialItems={(items ?? []) as SetlistSongWithSong[]}
+        initialItems={initialItems}
         availableSongs={songs ?? []}
       />
     </div>
