@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getOutbox } from "@/lib/db";
+import { emitMirrorUpdated } from "@/lib/mirror-bus";
 import { sync } from "@/lib/sync";
 
 type SyncState = "idle" | "syncing" | "offline" | "error";
@@ -18,8 +19,8 @@ interface SyncContextValue {
   online: boolean;
   state: SyncState;
   pending: number;
-  /** Force a flush + pull now. */
-  syncNow: () => void;
+  /** Flush + pull. Throttled to once per few seconds unless force === true. */
+  syncNow: (force?: boolean) => void;
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null);
@@ -35,6 +36,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SyncState>("idle");
   const [pending, setPending] = useState(0);
   const running = useRef(false);
+  const lastSyncAt = useRef(0);
 
   const refreshPending = useCallback(async () => {
     try {
@@ -44,8 +46,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const syncNow = useCallback(async () => {
+  const syncNow = useCallback(async (force?: boolean) => {
     if (running.current || typeof navigator === "undefined") return;
+    // Screens call this on every mount; don't hammer the network.
+    if (force !== true && Date.now() - lastSyncAt.current < 5000) return;
     if (!navigator.onLine) {
       setState("offline");
       return;
@@ -54,7 +58,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setState("syncing");
     try {
       await sync(createClient());
+      lastSyncAt.current = Date.now();
       setState("idle");
+      emitMirrorUpdated();
     } catch {
       setState("error");
     } finally {

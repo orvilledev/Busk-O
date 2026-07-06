@@ -43,7 +43,7 @@ export function SyncIndicator() {
 
   return (
     <button
-      onClick={syncNow}
+      onClick={() => syncNow(true)}
       title="Tap to sync now"
       className={cn(
         "flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-surface-2",

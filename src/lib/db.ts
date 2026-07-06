@@ -82,6 +82,13 @@ export async function getSetlistSongs(setlistId: string): Promise<SetlistSong[]>
   return rows.sort((a, b) => a.position - b.position);
 }
 
+/** Patch a single song in the mirror (e.g. optimistic favorite toggle). */
+export async function patchSongLocal(id: string, patch: Partial<Song>) {
+  const db = await getDB();
+  const row = await db.get("songs", id);
+  if (row) await db.put("songs", { ...row, ...patch });
+}
+
 // --- Mirror writes (from a server pull) ------------------------------------
 
 export async function replaceAll(data: {

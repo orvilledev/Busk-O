@@ -3,7 +3,16 @@
 import { useState, useTransition } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { patchSongLocal } from "@/lib/db";
+import { emitMirrorUpdated } from "@/lib/mirror-bus";
 import { toggleFavorite } from "@/app/(app)/songs/actions";
+
+/** Mirror the toggle locally so Favorites lists update instantly. */
+function patchMirror(songId: string, favorite: boolean) {
+  patchSongLocal(songId, { favorite })
+    .then(emitMirrorUpdated)
+    .catch(() => {});
+}
 
 export function FavoriteButton({
   songId,
@@ -25,13 +34,13 @@ export function FavoriteButton({
     e.stopPropagation();
     const next = !fav;
     setFav(next); // optimistic
+    patchMirror(songId, next);
     startTransition(async () => {
       try {
         await toggleFavorite(songId, next);
-        // After successful save, keep the optimistic state since the server
-        // has been revalidated and will send fresh data on the next page load.
       } catch {
-        setFav(!next); // revert only on failure
+        setFav(!next); // revert on failure
+        patchMirror(songId, !next);
       }
     });
   }
