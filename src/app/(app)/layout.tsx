@@ -13,15 +13,6 @@ export default async function AppLayout({
   // No backend → the full multi-user app is unavailable; use "try" mode.
   if (!supabaseConfigured) redirect("/try");
 
-  // Middleware already guards these routes; this is defense-in-depth and
-  // gives Server Components a guaranteed user.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
   return (
     <SyncProvider>
       <div className="flex min-h-full flex-1 flex-col">
