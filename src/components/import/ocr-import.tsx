@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { ImagePlus, Loader2, ScanLine, Wand2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ClipboardPaste, ImagePlus, Loader2, ScanLine, Wand2 } from "lucide-react";
 import { chordsOverWordsToChordPro } from "@/lib/chordpro";
-import { imageToChordPro } from "@/lib/ocr-run";
+import { imageToChordPro, imageFromClipboard } from "@/lib/ocr-run";
 import { ChordChart } from "@/components/songs/chord-chart";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { createSong } from "@/app/(app)/songs/actions";
 
 type Status = "idle" | "recognizing" | "ready";
@@ -17,20 +18,12 @@ export function OcrImport() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   const field =
     "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-accent";
 
-  function onFile(file: File | undefined) {
-    if (!file) return;
-    setImageUrl(URL.createObjectURL(file));
-    setStatus("idle");
-    setBody("");
-    if (!title) setTitle(file.name.replace(/\.[^.]+$/, ""));
-    recognize(file);
-  }
-
-  async function recognize(file: File) {
+  const recognize = useCallback(async (file: File) => {
     setStatus("recognizing");
     setProgress(0);
     try {
@@ -39,7 +32,33 @@ export function OcrImport() {
     } finally {
       setStatus("ready");
     }
-  }
+  }, []);
+
+  /** Accept an image from the file picker, a drop, or a paste. */
+  const ingest = useCallback(
+    (file: File | null | undefined) => {
+      if (!file) return;
+      setImageUrl(URL.createObjectURL(file));
+      setStatus("idle");
+      setBody("");
+      setTitle((t) => t || file.name.replace(/\.[^.]+$/, "") || "Pasted chart");
+      recognize(file);
+    },
+    [recognize],
+  );
+
+  // Paste a screenshot anywhere on the page (no need to click first).
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const image = imageFromClipboard(e.clipboardData?.items);
+      if (image) {
+        e.preventDefault();
+        ingest(image);
+      }
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [ingest]);
 
   async function save() {
     if (!title.trim() || !body.trim()) return;
@@ -57,20 +76,41 @@ export function OcrImport() {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">
-        Snap a photo of a chords-over-lyrics chart. We read it with OCR and
-        align the chords over the right syllables into ChordPro. OCR is never
-        perfect — tweak the result in the editor, then save.
+        Choose, drop, or <strong className="text-foreground">paste</strong>{" "}
+        (Ctrl/⌘+V) a chords-over-lyrics chart. We read it with OCR and align the
+        chords over the right syllables into ChordPro. OCR is never perfect —
+        tweak the result in the editor, then save.
       </p>
 
-      <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface py-10 text-center hover:border-accent">
+      <label
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragActive(false);
+          ingest(e.dataTransfer.files?.[0]);
+        }}
+        className={cn(
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-surface py-10 text-center transition-colors hover:border-accent",
+          dragActive ? "border-accent bg-accent/5" : "border-border",
+        )}
+      >
         <ImagePlus className="h-8 w-8 text-muted" />
-        <span className="text-sm font-medium">Choose or drop an image</span>
-        <span className="text-xs text-muted">JPG, PNG, or HEIC</span>
+        <span className="text-sm font-medium">
+          Choose, drop, or paste an image
+        </span>
+        <span className="flex items-center gap-1 text-xs text-muted">
+          <ClipboardPaste className="h-3.5 w-3.5" /> Ctrl/⌘+V works anywhere on
+          this page · JPG, PNG, or HEIC
+        </span>
         <input
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => onFile(e.target.files?.[0])}
+          onChange={(e) => ingest(e.target.files?.[0])}
         />
       </label>
 
