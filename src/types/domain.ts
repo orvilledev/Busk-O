@@ -11,6 +11,7 @@ export interface Song {
   ccli_number: string | null;
   body: string; // ChordPro source
   tags: string[];
+  favorite: boolean;
   created_at: string;
   updated_at: string;
 }

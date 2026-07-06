@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Pencil, Trash2, Type, RotateCcw } from "lucide-react";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { ChordChart } from "./chord-chart";
+import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
 import type { Song } from "@/types/domain";
@@ -54,7 +55,12 @@ export function SongView({
             </div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <FavoriteButton
+            songId={song.id}
+            initial={song.favorite ?? false}
+            className="border border-border"
+          />
           <Link href={`/songs/${song.id}/edit`}>
             <Button variant="secondary" size="sm">
               <Pencil className="h-4 w-4" /> Edit

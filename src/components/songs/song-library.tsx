@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Music, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "./favorite-button";
 
 type SongRow = {
   id: string;
@@ -11,6 +12,7 @@ type SongRow = {
   artist: string | null;
   original_key: string | null;
   tags: string[];
+  favorite?: boolean;
 };
 
 export function SongLibrary({ songs }: { songs: SongRow[] }) {
@@ -72,10 +74,10 @@ export function SongLibrary({ songs }: { songs: SongRow[] }) {
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
           {filtered.map((song) => (
-            <li key={song.id}>
+            <li key={song.id} className="flex items-center hover:bg-surface-2">
               <Link
                 href={`/songs/${song.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-surface-2"
+                className="flex min-w-0 flex-1 items-center justify-between py-3 pl-4 pr-2"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <Music className="h-4 w-4 shrink-0 text-muted" />
@@ -92,6 +94,12 @@ export function SongLibrary({ songs }: { songs: SongRow[] }) {
                   </span>
                 )}
               </Link>
+              <FavoriteButton
+                songId={song.id}
+                initial={song.favorite ?? false}
+                className="mr-2 shrink-0"
+                iconClassName="h-4 w-4"
+              />
             </li>
           ))}
         </ul>

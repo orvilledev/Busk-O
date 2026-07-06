@@ -310,7 +310,7 @@ function SongPicker({
 
   return (
     <div
-      className="fixed inset-0 z-20 flex items-start justify-center bg-black/60 p-4 pt-24"
+      className="fixed inset-0 z-40 flex items-start justify-center bg-black/60 p-4 pt-24"
       onClick={onClose}
     >
       <div

@@ -80,3 +80,16 @@ export async function deleteSong(id: string) {
   revalidatePath("/songs");
   redirect("/songs");
 }
+
+export async function toggleFavorite(id: string, favorite: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("songs")
+    .update({ favorite })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/songs");
+  revalidatePath("/favorites");
+  revalidatePath(`/songs/${id}`);
+}

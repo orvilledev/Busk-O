@@ -6,9 +6,11 @@ import { SongLibrary } from "@/components/songs/song-library";
 
 export default async function SongsPage() {
   const supabase = await createClient();
+  // select("*") keeps this working even before the favorites migration runs
+  // (a named non-existent column would error).
   const { data: songs } = await supabase
     .from("songs")
-    .select("id, title, artist, original_key, tags")
+    .select("*")
     .order("title", { ascending: true });
 
   const list = songs ?? [];
