@@ -64,19 +64,29 @@ function ChartLine({ line }: { line: Line }) {
     );
   }
 
-  // Standalone comment line ({comment: ...}).
+  const pairs = line.items.filter(
+    (i): i is ChordLyricsPair => i instanceof ChordLyricsPair,
+  );
+  const hasPairContent = pairs.some(
+    (p) => (p.chords ?? "").trim() || (p.lyrics ?? "").trim(),
+  );
+
+  // Standalone comment line ({comment: ...}) — how OCR imports mark sections
+  // (Intro, Verse, Chorus…). Note: hasRenderableItems() counts the tag itself
+  // in this chordsheetjs version, so check for real chord/lyric content.
   const comment = line.items.find(
     (i): i is Comment | Tag =>
       i instanceof Comment || (i instanceof Tag && i.isComment()),
   );
-  if (comment && !line.hasRenderableItems()) {
+  if (comment && !hasPairContent) {
     const text = comment instanceof Comment ? comment.content : comment.value;
-    return <div className="text-sm italic text-muted">{text}</div>;
+    return (
+      <div className="mb-1 mt-2 text-xs font-semibold uppercase tracking-wide text-muted">
+        {text}
+      </div>
+    );
   }
 
-  const pairs = line.items.filter(
-    (i): i is ChordLyricsPair => i instanceof ChordLyricsPair,
-  );
   if (pairs.length === 0) return null;
 
   const hasChords = pairs.some((p) => p.chords);
