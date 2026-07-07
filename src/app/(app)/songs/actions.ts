@@ -63,7 +63,7 @@ export async function updateSong(id: string, formData: FormData) {
   const input = readForm(formData);
   if (!input.title) throw new Error("Title is required.");
 
-  const supabase = await createClient();
+  const { supabase } = await requireUser();
   const { error } = await supabase.from("songs").update(input).eq("id", id);
   if (error) throw new Error(error.message);
 
@@ -73,7 +73,7 @@ export async function updateSong(id: string, formData: FormData) {
 }
 
 export async function deleteSong(id: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireUser();
   const { error } = await supabase.from("songs").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
