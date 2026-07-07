@@ -229,7 +229,7 @@ export function StageMode({
           </>
         )}
 
-        <div className="mx-auto max-w-4xl px-6 py-6">
+        <div className="mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6">
           <ChordChart
             source={current.body}
             semitones={renderSemitones(current)}

@@ -74,7 +74,7 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
   );
   if (label) {
     return (
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+      <div className="mb-1 text-[0.8em] font-semibold uppercase tracking-wide text-muted">
         {label.label}
       </div>
     );
@@ -103,7 +103,7 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
   if (comment && !hasChords && !hasLyrics) {
     const text = comment instanceof Comment ? comment.content : comment.value;
     return (
-      <div className="mb-1 mt-2 text-xs font-semibold uppercase tracking-wide text-muted">
+      <div className="mb-1 mt-2 text-[0.8em] font-semibold uppercase tracking-wide text-muted">
         {text}
       </div>
     );
@@ -134,19 +134,19 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
             <span
               className={
                 t.kind === "chord"
-                  ? "font-mono text-xs font-semibold text-chord sm:text-sm"
-                  : "text-xs text-muted sm:text-sm"
+                  ? "font-mono text-[0.85em] font-semibold text-chord"
+                  : "text-[0.85em] text-muted"
               }
             >
               {t.text}
             </span>
             {t.kind === "chord" && tokens[i + 1]?.kind === "chord" && (
-              <span className="text-xs text-muted sm:text-sm">-</span>
+              <span className="text-[0.85em] text-muted">-</span>
             )}
           </span>
         ))}
         {markers.map((m, i) => (
-          <span key={`m${i}`} className="ml-1 text-xs text-muted sm:text-sm">
+          <span key={`m${i}`} className="ml-1 text-[0.85em] text-muted">
             {m}
           </span>
         ))}
@@ -166,7 +166,7 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
           <span key={i} className="flex flex-col">
             <span className="flex items-center gap-0.5 min-h-5">
               {hasChords && (
-                <span className="font-mono text-xs font-semibold text-chord sm:text-sm">
+                <span className="font-mono text-[0.85em] font-semibold text-chord">
                   {pair.chords || " "}
                 </span>
               )}
