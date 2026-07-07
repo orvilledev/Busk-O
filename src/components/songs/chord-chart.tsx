@@ -111,8 +111,8 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
 
   const showDashSeparators = hasChords && !hasLyrics;
 
-  // Check if any pair looks like a repeat marker (x2, x3, 2x, etc.)
-  const hasRepeatMarker = pairs.some(
+  // Find repeat marker index if present
+  const repeatMarkerIndex = pairs.findIndex(
     (p) => /^\(?(?:x\d+|\d+x)\)?$/i.test((p.chords ?? "").trim()),
   );
 
@@ -123,29 +123,32 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
         // artifacts from lines under chords in the image).
         const lyricsContent = pair.lyrics ?? "";
         const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
-        const isLastChord = i === pairs.length - 1;
         const chordText = (pair.chords ?? "").trim();
         const isRepeatMarker = /^\(?(?:x\d+|\d+x)\)?$/i.test(chordText);
 
+        // Skip rendering repeat marker as a separate item
+        if (isRepeatMarker) return null;
+
+        const isLastChord = i === pairs.length - 1 || i === repeatMarkerIndex - 1;
+
         // Don't show dashes before repeat markers
-        const shouldShowDash = showDashSeparators && !isLastChord && !isRepeatMarker;
+        const shouldShowDash = showDashSeparators && !isLastChord;
 
         return (
           <span key={i} className="flex flex-col">
             <span className="flex items-center gap-0.5 min-h-5">
               {hasChords && (
-                <span
-                  className={
-                    isRepeatMarker
-                      ? "text-xs sm:text-sm text-muted"
-                      : "font-mono text-xs font-semibold text-chord sm:text-sm"
-                  }
-                >
+                <span className="font-mono text-xs font-semibold text-chord sm:text-sm">
                   {pair.chords || " "}
                 </span>
               )}
               {shouldShowDash && (
                 <span className="text-muted text-xs sm:text-sm">-</span>
+              )}
+              {isLastChord && repeatMarkerIndex >= 0 && (
+                <span className="text-xs sm:text-sm text-muted ml-1">
+                  {pairs[repeatMarkerIndex].chords}
+                </span>
               )}
             </span>
             {!isDashOnly && (
