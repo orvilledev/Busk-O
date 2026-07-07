@@ -129,9 +129,12 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
         // Skip rendering repeat marker as a separate item
         if (isRepeatMarker) return null;
 
-        const isLastChord = i === pairs.length - 1 || i === repeatMarkerIndex - 1;
+        // Check if the next item is a repeat marker or if this is the last item
+        const nextIsRepeatMarker = (i + 1 < pairs.length) &&
+          /^\(?(?:x\d+|\d+x)\)?$/i.test((pairs[i + 1].chords ?? "").trim());
+        const isLastChord = i === pairs.length - 1 || nextIsRepeatMarker;
 
-        // Don't show dashes before repeat markers
+        // Don't show dashes after the last chord
         const shouldShowDash = showDashSeparators && !isLastChord;
 
         return (
