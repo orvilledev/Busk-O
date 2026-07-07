@@ -18,10 +18,21 @@ export interface OcrWord {
 
 /**
  * Matches a chord token: root, optional accidental, quality, extension, and
- * slash bass — e.g. G, Em, D/F#, Cadd9, Dadd4, Am7, Cmaj7, Dsus4.
+ * slash bass — e.g. G, Em, D/F#, Cadd9, Dadd4, Am7, Cmaj7, Dsus4, E7, G7sus4.
+ *
+ * Handles:
+ * - Root + optional accidental: [A-G][#b]?
+ * - Optional quality: maj|min|m|dim|aug|add (maj7, Emaj7, etc.)
+ * - Optional extension number: \d{1,2} (E7, Am9, Cmaj7, etc.)
+ * - Optional sus modifier: sus[24]? (sus2, sus4, sus)
+ * - Optional add modifier: add\d{1,2} (add9, add11, etc.)
+ * - Optional slash bass: /[A-G][#b]? (D/F#, C/E, etc.)
+ *
+ * The key improvement: numbers can appear directly after root (E7) or after
+ * quality (Em7) or after special modifiers (sus4, add9).
  */
 const CHORD_RE =
-  /^[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|M)?\d{0,2}(?:sus\d?)?(?:add\d{1,2})?(?:\/[A-G][#b]?)?$/;
+  /^[A-G][#b]?(?:(?:maj|min|m|dim|aug|add)\d{0,2}|maj\d{1,2}|m\d{1,2}|\d{1,2})?(?:sus[24]?)?(?:add\d{1,2})?(?:\/[A-G][#b]?)?$/;
 
 /** Bar/measure separators that may appear on a chord line. */
 const MEASURE_TOKENS = new Set(["|", "%", "||", ":"]);
