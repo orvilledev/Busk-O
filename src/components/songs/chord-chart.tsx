@@ -84,7 +84,12 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
     (i): i is ChordLyricsPair => i instanceof ChordLyricsPair,
   );
   const hasChords = pairs.some((p) => p.chords);
-  const hasLyrics = pairs.some((p) => (p.lyrics ?? "").trim());
+  // Treat repeat markers as noise, not as lyrics
+  const hasLyrics = pairs.some(
+    (p) =>
+      (p.lyrics ?? "").trim() &&
+      !/^\(?(?:x\d+|\d+x)\)?$/i.test((p.lyrics ?? "").trim()),
+  );
 
   // Standalone comment line ({comment: ...}) — how OCR imports mark sections
   // (Intro, Verse, Chorus…). Note: hasRenderableItems() counts the tag itself
@@ -104,28 +109,42 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
 
   if (pairs.length === 0) return null;
 
-  const showDashSeparators =
-    hasChords &&
-    !hasLyrics &&
-    /^(intro|instrumental|interlude)/.test(section);
+  const showDashSeparators = hasChords && !hasLyrics;
+
+  // Check if any pair looks like a repeat marker (x2, x3, 2x, etc.)
+  const hasRepeatMarker = pairs.some(
+    (p) => /^\(?(?:x\d+|\d+x)\)?$/i.test((p.chords ?? "").trim()),
+  );
 
   return (
-    <div className="flex flex-wrap items-start gap-0.5">
+    <div className="flex items-start gap-0.5 flex-wrap">
       {pairs.map((pair, i) => {
         // Skip rendering lyrics that are just dashes/underscores/spaces (OCR
         // artifacts from lines under chords in the image).
         const lyricsContent = pair.lyrics ?? "";
         const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
         const isLastChord = i === pairs.length - 1;
+        const chordText = (pair.chords ?? "").trim();
+        const isRepeatMarker = /^\(?(?:x\d+|\d+x)\)?$/i.test(chordText);
+
+        // Don't show dashes before repeat markers
+        const shouldShowDash = showDashSeparators && !isLastChord && !isRepeatMarker;
+
         return (
           <span key={i} className="flex flex-col">
             <span className="flex items-center gap-0.5 min-h-5">
               {hasChords && (
-                <span className="font-mono text-xs font-semibold text-chord sm:text-sm">
+                <span
+                  className={
+                    isRepeatMarker
+                      ? "text-xs sm:text-sm text-muted"
+                      : "font-mono text-xs font-semibold text-chord sm:text-sm"
+                  }
+                >
                   {pair.chords || " "}
                 </span>
               )}
-              {showDashSeparators && !isLastChord && (
+              {shouldShowDash && (
                 <span className="text-muted text-xs sm:text-sm">-</span>
               )}
             </span>
