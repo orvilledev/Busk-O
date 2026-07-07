@@ -99,20 +99,42 @@ export function readChords(t: string): string[] | null {
 }
 
 /**
- * OCR frequently reads a capital "I" as the digit "1" (both are a bare vertical
- * stroke). Repair that in a *lyric* word only:
- * - a lone "1" (optionally with trailing punctuation): "1" → "I", "1," → "I,"
- * - a word-initial "1" that can't be a number, i.e. followed by a letter or
- *   apostrophe: "1f" → "If", "1've" → "I've" — but not ordinals ("1st") or
- *   real numbers ("10", "1999").
- * Replacements are the same length, so chord-over-syllable alignment is
- * unaffected. Never applied to chords or numbers.
+ * OCR frequently misreads vertical strokes as "1":
+ * - Capital "I" as "1": "If" → "1f", "I've" → "1've"
+ * - Lowercase "l" as "1": "hello" → "he11o", "like" → "1ike", "blessed" → "b1essed"
+ *
+ * Fix in *lyric* words only (not chords or numbers):
+ * - Capital I: lone "1", uppercase letter after, or apostrophe after
+ * - Lowercase l: "1" between lowercase letters, or word-initial "1" + 2+ lowercase letters
+ *
+ * Replacements are the same length, so chord-over-syllable alignment stays correct.
  */
 export function fixLyricOcr(word: string): string {
+  // Fix capital I: lone "1" or "1" before uppercase/apostrophe (not lowercase)
   if (/^1[^\w'#/]*$/.test(word)) return "I" + word.slice(1);
-  if (/^1['A-Za-z]/.test(word) && !/^1(?:st|nd|rd|th)\b/i.test(word)) {
+  if (/^1[A-Z']/.test(word) && !/^1(?:st|nd|rd|th)\b/i.test(word)) {
     return "I" + word.slice(1);
   }
+
+  // Fix lowercase l: "1" between letters or word-initial "1" in words with 2+ letters
+  // But skip ordinals like "1st", "1nd", "1rd", "1th"
+  if (/[a-z]/.test(word) && !/^\d+$/.test(word) && !/^1(?:st|nd|rd|th)\b/i.test(word)) {
+    // Replace one or more "1"s between lowercase letters: "he11o" → "hello"
+    // Use a loop to handle cases like "ha11e1ujah" where replacements are adjacent
+    let prev = "";
+    while (prev !== word) {
+      prev = word;
+      word = word.replace(/([a-z])(1+)([a-z])/g, (m, g1, g2, g3) =>
+        g1 + g2.replace(/1/g, "l") + g3
+      );
+    }
+    word = word.replace(/([a-z])1([^a-z0-9]|$)/g, "$1l$2"); // "be1," → "bel,"
+    // Word-initial "1" followed by 2+ lowercase letters
+    if (/^1[a-z]{2,}/.test(word)) {
+      word = "l" + word.slice(1);
+    }
+  }
+
   return word;
 }
 

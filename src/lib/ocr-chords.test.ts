@@ -132,14 +132,25 @@ describe("normalizeToken", () => {
   });
 });
 
-describe("fixLyricOcr (I misread as 1)", () => {
-  it("fixes a lone I and word-initial I", () => {
+describe("fixLyricOcr (I and l misread as 1)", () => {
+  it("fixes capital I: lone 1 or word-initial before uppercase/apostrophe", () => {
     expect(fixLyricOcr("1")).toBe("I");
     expect(fixLyricOcr("1,")).toBe("I,");
-    expect(fixLyricOcr("1f")).toBe("If");
-    expect(fixLyricOcr("1t")).toBe("It");
     expect(fixLyricOcr("1've")).toBe("I've");
     expect(fixLyricOcr("1'll")).toBe("I'll");
+    expect(fixLyricOcr("1F")).toBe("IF");
+    expect(fixLyricOcr("1T")).toBe("IT");
+  });
+
+  it("fixes lowercase l: 1 between letters or in multi-letter words", () => {
+    expect(fixLyricOcr("he11o")).toBe("hello");
+    expect(fixLyricOcr("1ike")).toBe("like");
+    expect(fixLyricOcr("be1ow")).toBe("below");
+    expect(fixLyricOcr("ha11e1ujah")).toBe("hallelujah");
+    expect(fixLyricOcr("ho1y")).toBe("holy");
+    expect(fixLyricOcr("c1ear")).toBe("clear");
+    expect(fixLyricOcr("fai1ed")).toBe("failed");
+    expect(fixLyricOcr("b1essed")).toBe("blessed");
   });
 
   it("leaves real numbers and ordinals alone", () => {
@@ -147,6 +158,7 @@ describe("fixLyricOcr (I misread as 1)", () => {
     expect(fixLyricOcr("1999")).toBe("1999");
     expect(fixLyricOcr("1st")).toBe("1st");
     expect(fixLyricOcr("love")).toBe("love");
+    expect(fixLyricOcr("101")).toBe("101");
   });
 
   it("corrects lyrics when building a chord line", () => {
@@ -154,6 +166,15 @@ describe("fixLyricOcr (I misread as 1)", () => {
     const chords = [w("G", 20, 20)];
     const lyric = [w("1", 20, 46), w("love", 45, 46), w("your", 100, 46)];
     expect(rowsToChordPro([chords, lyric])).toBe("[G]I love your");
+  });
+
+  it("fixes lowercase l in lyrics", () => {
+    // "blessed holy life" where l is misread as 1
+    const chords = [w("G", 10, 20)];
+    const lyric = [w("b1essed", 10, 46), w("ho1y", 70, 46), w("1ife", 140, 46)];
+    expect(rowsToChordPro([chords, lyric])).toContain("blessed");
+    expect(rowsToChordPro([chords, lyric])).toContain("holy");
+    expect(rowsToChordPro([chords, lyric])).toContain("life");
   });
 
   it("does not corrupt a section number like Verse 1", () => {
