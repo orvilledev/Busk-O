@@ -34,6 +34,7 @@ export function ChordChart({
     >
       {paragraphs.map((paragraph, pi) => {
         const isChorus = paragraph.lines.some((l) => l.isChorus());
+        let currentSection = "";
         return (
           <div
             key={pi}
@@ -41,9 +42,24 @@ export function ChordChart({
               isChorus && "border-l-2 border-accent/60 pl-3",
             )}
           >
-            {paragraph.lines.map((line, li) => (
-              <ChartLine key={li} line={line} />
-            ))}
+            {paragraph.lines.map((line, li) => {
+              // Track current section from comments
+              const comment = line.items.find(
+                (i): i is Comment | Tag =>
+                  i instanceof Comment || (i instanceof Tag && i.isComment()),
+              );
+              if (comment) {
+                const text = comment instanceof Comment ? comment.content : comment.value;
+                currentSection = text.toLowerCase();
+              }
+              return (
+                <ChartLine
+                  key={li}
+                  line={line}
+                  section={currentSection}
+                />
+              );
+            })}
           </div>
         );
       })}
@@ -51,7 +67,7 @@ export function ChordChart({
   );
 }
 
-function ChartLine({ line }: { line: Line }) {
+function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
   // Section label from a {start_of_*: label="..."} tag, if any.
   const label = line.items.find(
     (i): i is Tag => i instanceof Tag && i.isSectionStart() && i.hasLabel(),
@@ -67,9 +83,8 @@ function ChartLine({ line }: { line: Line }) {
   const pairs = line.items.filter(
     (i): i is ChordLyricsPair => i instanceof ChordLyricsPair,
   );
-  const hasPairContent = pairs.some(
-    (p) => (p.chords ?? "").trim() || (p.lyrics ?? "").trim(),
-  );
+  const hasChords = pairs.some((p) => p.chords);
+  const hasLyrics = pairs.some((p) => (p.lyrics ?? "").trim());
 
   // Standalone comment line ({comment: ...}) — how OCR imports mark sections
   // (Intro, Verse, Chorus…). Note: hasRenderableItems() counts the tag itself
@@ -78,7 +93,7 @@ function ChartLine({ line }: { line: Line }) {
     (i): i is Comment | Tag =>
       i instanceof Comment || (i instanceof Tag && i.isComment()),
   );
-  if (comment && !hasPairContent) {
+  if (comment && !hasChords && !hasLyrics) {
     const text = comment instanceof Comment ? comment.content : comment.value;
     return (
       <div className="mb-1 mt-2 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -89,7 +104,10 @@ function ChartLine({ line }: { line: Line }) {
 
   if (pairs.length === 0) return null;
 
-  const hasChords = pairs.some((p) => p.chords);
+  const showDashSeparators =
+    hasChords &&
+    !hasLyrics &&
+    /^(intro|instrumental|interlude)/.test(section);
 
   return (
     <div className="flex flex-wrap items-start gap-0.5">
@@ -98,17 +116,23 @@ function ChartLine({ line }: { line: Line }) {
         // artifacts from lines under chords in the image).
         const lyricsContent = pair.lyrics ?? "";
         const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
+        const isLastChord = i === pairs.length - 1;
         return (
-          <span key={i} className="flex flex-col">
-            {hasChords && (
-              <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
-                {pair.chords || " "}
-              </span>
-            )}
-            {!isDashOnly && (
-              <span className="whitespace-pre-wrap break-words">
-                {lyricsContent || " "}
-              </span>
+          <span key={i} className="flex items-center gap-0.5">
+            <span className="flex flex-col">
+              {hasChords && (
+                <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
+                  {pair.chords || " "}
+                </span>
+              )}
+              {!isDashOnly && (
+                <span className="whitespace-pre-wrap break-words">
+                  {lyricsContent || " "}
+                </span>
+              )}
+            </span>
+            {showDashSeparators && !isLastChord && (
+              <span className="text-muted">-</span>
             )}
           </span>
         );
