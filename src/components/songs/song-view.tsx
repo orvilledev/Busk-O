@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Pencil, Trash2, Type, RotateCcw, Download, Play } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Type,
+  RotateCcw,
+  Download,
+  Play,
+  Pause,
+  Gauge,
+} from "lucide-react";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
+import { useAutoScroll } from "@/hooks/use-auto-scroll";
 import { ChordChart } from "./chord-chart";
 import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
@@ -24,6 +34,17 @@ export function SongView({
   const [semitones, setSemitones] = useState(0);
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1);
+  const [speed, setSpeed] = useState(24); // px per second
+
+  // Auto-scroll the whole page so the performer can read hands-free. The
+  // document element is the viewport scroller in this layout.
+  const scrollElRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    scrollElRef.current =
+      (document.scrollingElement as HTMLElement | null) ??
+      document.documentElement;
+  }, []);
+  const { scrolling, setScrolling } = useAutoScroll(scrollElRef, speed);
 
   // Guitarists read shapes transposed down by the capo; the audience hears the
   // sounding key. When there's no declared key we just show the raw transpose.
@@ -62,12 +83,21 @@ export function SongView({
             initial={song.favorite ?? false}
             className="border border-border"
           />
-          <Link href={`/songs/${song.id}/play`}>
-            <Button size="sm" title="Play (stage view)">
+          <Button
+            size="sm"
+            onClick={() => setScrolling((s) => !s)}
+            aria-pressed={scrolling}
+            title={scrolling ? "Pause auto-scroll" : "Play (auto-scroll)"}
+          >
+            {scrolling ? (
+              <Pause className="h-4 w-4 shrink-0" />
+            ) : (
               <Play className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline"> Play</span>
-            </Button>
-          </Link>
+            )}
+            <span className="hidden sm:inline">
+              {scrolling ? " Pause" : " Play"}
+            </span>
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -125,6 +155,24 @@ export function SongView({
             A+
           </button>
         </div>
+        {scrolling && (
+          <div className="flex items-center gap-1" title="Auto-scroll speed">
+            <Gauge className="h-4 w-4 text-muted" />
+            <button
+              className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
+              onClick={() => setSpeed((s) => Math.max(6, s - 6))}
+            >
+              −
+            </button>
+            <span className="w-6 text-center font-mono text-xs">{speed}</span>
+            <button
+              className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
+              onClick={() => setSpeed((s) => Math.min(120, s + 6))}
+            >
+              +
+            </button>
+          </div>
+        )}
         {(semitones !== 0 || capo !== 0) && (
           <button
             onClick={reset}
