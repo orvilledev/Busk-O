@@ -84,12 +84,14 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
     (i): i is ChordLyricsPair => i instanceof ChordLyricsPair,
   );
   const hasChords = pairs.some((p) => p.chords);
-  // Treat repeat markers as noise, not as lyrics
-  const hasLyrics = pairs.some(
-    (p) =>
-      (p.lyrics ?? "").trim() &&
-      !/^\(?(?:x\d+|\d+x)\)?$/i.test((p.lyrics ?? "").trim()),
-  );
+  // Repeat markers (x2), bars (|), and dash/dot separators are chart notation,
+  // not lyrics — they must not disqualify a line from chord-only rendering.
+  const REPEAT_RE = /^\(?(?:x\d+|\d+x)\)?$/i;
+  const NOTATION_RE = /^(?:[|%:]+|[·._\s–—-]+)$/;
+  const hasLyrics = pairs.some((p) => {
+    const l = (p.lyrics ?? "").trim();
+    return l !== "" && !REPEAT_RE.test(l) && !NOTATION_RE.test(l);
+  });
 
   // Standalone comment line ({comment: ...}) — how OCR imports mark sections
   // (Intro, Verse, Chorus…). Note: hasRenderableItems() counts the tag itself
@@ -109,12 +111,48 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
 
   if (pairs.length === 0) return null;
 
-  const showDashSeparators = hasChords && !hasLyrics;
-
-  // Find repeat marker index if present
-  const repeatMarkerIndex = pairs.findIndex(
-    (p) => /^\(?(?:x\d+|\d+x)\)?$/i.test((p.chords ?? "").trim()),
-  );
+  // Chord-only line (intro/interlude/instrumental/turnaround): render as a
+  // single flat row — chords joined by dashes, bars kept, repeat markers at
+  // the end. Markers and separators can land in either the chords or lyrics
+  // slot depending on how the ChordPro parsed, so scan both.
+  if (hasChords && !hasLyrics) {
+    const tokens: { text: string; kind: "chord" | "bar" }[] = [];
+    const markers: string[] = [];
+    for (const p of pairs) {
+      for (const t of [(p.chords ?? "").trim(), (p.lyrics ?? "").trim()]) {
+        if (!t) continue;
+        if (REPEAT_RE.test(t)) markers.push(t);
+        else if (/^[|%:]+$/.test(t)) tokens.push({ text: t, kind: "bar" });
+        else if (NOTATION_RE.test(t)) continue; // literal dashes — we draw our own
+        else tokens.push({ text: t, kind: "chord" });
+      }
+    }
+    return (
+      <div className="flex min-h-5 flex-wrap items-center gap-1">
+        {tokens.map((t, i) => (
+          <span key={i} className="flex items-center gap-1">
+            <span
+              className={
+                t.kind === "chord"
+                  ? "font-mono text-xs font-semibold text-chord sm:text-sm"
+                  : "text-xs text-muted sm:text-sm"
+              }
+            >
+              {t.text}
+            </span>
+            {t.kind === "chord" && tokens[i + 1]?.kind === "chord" && (
+              <span className="text-xs text-muted sm:text-sm">-</span>
+            )}
+          </span>
+        ))}
+        {markers.map((m, i) => (
+          <span key={`m${i}`} className="ml-1 text-xs text-muted sm:text-sm">
+            {m}
+          </span>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-start gap-0.5 flex-wrap">
@@ -123,19 +161,6 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
         // artifacts from lines under chords in the image).
         const lyricsContent = pair.lyrics ?? "";
         const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
-        const chordText = (pair.chords ?? "").trim();
-        const isRepeatMarker = /^\(?(?:x\d+|\d+x)\)?$/i.test(chordText);
-
-        // Skip rendering repeat marker as a separate item
-        if (isRepeatMarker) return null;
-
-        // Check if the next item is a repeat marker or if this is the last item
-        const nextIsRepeatMarker = (i + 1 < pairs.length) &&
-          /^\(?(?:x\d+|\d+x)\)?$/i.test((pairs[i + 1].chords ?? "").trim());
-        const isLastChord = i === pairs.length - 1 || nextIsRepeatMarker;
-
-        // Don't show dashes after the last chord
-        const shouldShowDash = showDashSeparators && !isLastChord;
 
         return (
           <span key={i} className="flex flex-col">
@@ -143,14 +168,6 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
               {hasChords && (
                 <span className="font-mono text-xs font-semibold text-chord sm:text-sm">
                   {pair.chords || " "}
-                </span>
-              )}
-              {shouldShowDash && (
-                <span className="text-muted text-xs sm:text-sm">-</span>
-              )}
-              {isLastChord && repeatMarkerIndex >= 0 && (
-                <span className="text-xs sm:text-sm text-muted ml-1">
-                  {pairs[repeatMarkerIndex].chords}
                 </span>
               )}
             </span>
