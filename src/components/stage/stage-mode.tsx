@@ -56,7 +56,8 @@ export function StageMode({
 }) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
-  const [fontScale, setFontScale] = useState(1.6);
+  // Start at the smallest size; the performer sizes up from there.
+  const [fontScale, setFontScale] = useState(0.9);
   const [showList, setShowList] = useState(false);
   const [speed, setSpeed] = useState(24); // px per second
   const touchStartX = useRef<number | null>(null);
