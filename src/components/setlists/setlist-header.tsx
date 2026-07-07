@@ -77,14 +77,14 @@ export function SetlistHeader({ setlist }: { setlist: Setlist }) {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">{setlist.name}</h1>
-          <div className="mt-0.5 flex items-center gap-2 text-sm text-muted">
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl font-bold">{setlist.name}</h1>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted">
             {setlist.event_date && <span>{setlist.event_date}</span>}
             {setlist.notes && <span>· {setlist.notes}</span>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="h-4 w-4" /> Edit
           </Button>

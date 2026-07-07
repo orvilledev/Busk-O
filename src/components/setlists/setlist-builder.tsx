@@ -105,19 +105,19 @@ export function SetlistBuilder({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">
           {items.length} {items.length === 1 ? "song" : "songs"}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={() => setPicking(true)}>
-            <Plus className="h-4 w-4" /> Add song
+            <Plus className="h-4 w-4 shrink-0" /> Add song
           </Button>
           <ExportMenu setlist={exportData} />
           {items.length > 0 && (
             <Link href={`/setlists/${setlistId}/play`}>
               <Button size="sm">
-                <Play className="h-4 w-4" /> Play
+                <Play className="h-4 w-4 shrink-0" /> Play
               </Button>
             </Link>
           )}
@@ -204,12 +204,16 @@ function SetlistRow({
       className="rounded-xl border border-border bg-surface"
     >
       <div className="flex items-center gap-2 p-3">
-        <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted" />
-        <span className="w-5 text-center text-sm text-muted">{index + 1}</span>
+        <GripVertical className="hidden h-4 w-4 shrink-0 cursor-grab text-muted sm:block" />
+        <span className="w-5 shrink-0 text-center text-sm text-muted">
+          {index + 1}
+        </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{item.song.title}</div>
-          <div className="flex items-center gap-2 text-xs text-muted">
-            {item.song.artist && <span className="truncate">{item.song.artist}</span>}
+          <div className="font-medium leading-tight break-words">
+            {item.song.title}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
+            {item.song.artist && <span className="break-words">{item.song.artist}</span>}
             {item.transpose_key && (
               <span className="rounded bg-surface-2 px-1.5">
                 → {item.transpose_key}
