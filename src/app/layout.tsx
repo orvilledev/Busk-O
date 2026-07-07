@@ -25,6 +25,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#0a0a0b",
   colorScheme: "dark",
+  // Lock the mobile view: no pinch-zoom or double-tap zoom, so the layout
+  // stays fixed. Text size is adjusted only via the in-app A−/A+ controls.
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
