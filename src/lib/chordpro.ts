@@ -50,10 +50,29 @@ export function getKey(song: Song): string | null {
   return key ? key.toString() : null;
 }
 
+/**
+ * Normalize enharmonic equivalents: B# → C, E# → F.
+ * These shouldn't appear in well-formed charts, but chordsheetjs may produce
+ * them during transposition. We fix them here for music theory accuracy.
+ */
+function normalizeEnharmonics(chord: string): string {
+  return chord
+    .replace(/B#/g, "C")
+    .replace(/E#/g, "F");
+}
+
 /** Transpose a song by a number of semitones (positive up, negative down). */
 export function transpose(song: Song, semitones: number): Song {
   if (semitones === 0) return song;
-  return song.transpose(semitones);
+  const transposed = song.transpose(semitones);
+
+  // Fix enharmonic equivalents in chords after transposition
+  const source = toChordPro(transposed);
+  const normalized = source.replace(/\[([^\]]+)\]/g, (match, chord) => {
+    return `[${normalizeEnharmonics(chord)}]`;
+  });
+
+  return parse(normalized);
 }
 
 const FLAT_TO_SHARP: Record<string, string> = {
