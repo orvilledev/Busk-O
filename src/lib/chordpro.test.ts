@@ -37,6 +37,21 @@ describe("parse", () => {
     expect(() => parse("")).not.toThrow();
     expect(() => parse("just some words no chords")).not.toThrow();
   });
+
+  it("survives mid-edit malformed input (regression: crashed the editor)", () => {
+    // Unclosed directive / bracket exactly as typed mid-edit.
+    expect(() => parse("{start_of_verse\n[G Amazing [C grace\n[")).not.toThrow();
+    expect(() => parse("{")).not.toThrow();
+    expect(() => parse("[")).not.toThrow();
+    expect(() => parse("{comment: ok}\n{bad")).not.toThrow();
+  });
+
+  it("keeps the valid lines when one line is broken", () => {
+    const song = parse("{bad\n[G]Amazing grace");
+    const out = toChordPro(song);
+    expect(out).toContain("[G]");
+    expect(out).toContain("Amazing grace");
+  });
 });
 
 describe("getKey", () => {
@@ -82,6 +97,11 @@ describe("chordsOverWordsToChordPro", () => {
     expect(out).toContain("[G]");
     expect(out).toContain("[C]");
     expect(out).toContain("Amazing");
+  });
+
+  it("returns the input unchanged when it can't be interpreted", () => {
+    const weird = "{{{{ not a chart ]]]";
+    expect(() => chordsOverWordsToChordPro(weird)).not.toThrow();
   });
 });
 

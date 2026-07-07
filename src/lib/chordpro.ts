@@ -22,18 +22,75 @@ export {
   capoFret,
 } from "./keys";
 
-/** Parse ChordPro source into a Song AST. Never throws on bad input. */
+/** Line number (1-based) a Peggy parse error points at, if any. */
+function errorLine(e: unknown): number | null {
+  const line = (e as { location?: { start?: { line?: number } } })?.location
+    ?.start?.line;
+  return typeof line === "number" && line > 0 ? line : null;
+}
+
+/**
+ * ChordPro directives and chord brackets never span lines, so a line with
+ * unbalanced {} or [] can never be valid — it's mid-edit typing.
+ */
+function isBalancedLine(line: string): boolean {
+  return (
+    (line.match(/\{/g) ?? []).length === (line.match(/\}/g) ?? []).length &&
+    (line.match(/\[/g) ?? []).length === (line.match(/\]/g) ?? []).length
+  );
+}
+
+/**
+ * Parse ChordPro source into a Song AST. Never throws on bad input.
+ *
+ * The live editor preview re-parses on every keystroke, so the source is
+ * routinely mid-edit invalid (an unclosed "{directive" or "[bracket").
+ * chordsheetjs' PEG parser throws on those — which used to crash the whole
+ * page. Instead we blank structurally invalid lines and retry, so the rest
+ * of the chart keeps rendering while the line being typed simply disappears
+ * from the preview until it's valid again.
+ */
 export function parse(source: string): Song {
-  return new ChordProParser().parse(source);
+  try {
+    return new ChordProParser().parse(source);
+  } catch {
+    /* fall through to repair */
+  }
+
+  // An unclosed "{" swallows the rest of the document, so the parser reports
+  // the error far from the real culprit — blank unbalanced lines up front,
+  // then let the error-line loop mop up anything else.
+  const lines = source.split("\n").map((l) => (isBalancedLine(l) ? l : ""));
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return new ChordProParser().parse(lines.join("\n"));
+    } catch (e) {
+      const line = errorLine(e);
+      if (line === null || line > lines.length || lines[line - 1] === "") break;
+      lines[line - 1] = "";
+    }
+  }
+
+  // Last resorts: strip ChordPro syntax entirely, then give up to empty.
+  try {
+    return new ChordProParser().parse(source.replace(/[{}[\]]/g, ""));
+  } catch {
+    return new ChordProParser().parse("");
+  }
 }
 
 /**
  * Convert a "chords over lyrics" chart (chords on their own line above the
  * lyric line) into canonical ChordPro. Used by paste- and OCR-import.
+ * Returns the input unchanged if it can't be interpreted — never throws.
  */
 export function chordsOverWordsToChordPro(source: string): string {
-  const song = new ChordsOverWordsParser().parse(source);
-  return new ChordProFormatter().format(song);
+  try {
+    const song = new ChordsOverWordsParser().parse(source);
+    return new ChordProFormatter().format(song);
+  } catch {
+    return source;
+  }
 }
 
 /** Serialize a Song back to ChordPro (e.g. after transposing for export). */
