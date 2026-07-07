@@ -3,6 +3,8 @@ import {
   isChord,
   normalizeToken,
   fixLyricOcr,
+  readChords,
+  splitMergedChords,
   clusterRows,
   rowsToChordPro,
   wordsToChordPro,
@@ -24,9 +26,32 @@ describe("isChord", () => {
     }
   });
 
+  it("accepts extensions, M-quality, dim, and altered chords", () => {
+    for (const c of ["E7", "G7", "Dm7", "FM7", "Abdim", "Eb", "G7sus4", "Am7b5", "C/G", "F/G", "Cmaj9"]) {
+      expect(isChord(c), c).toBe(true);
+    }
+  });
+
   it("rejects lyric words", () => {
-    for (const bad of ["love", "the", "dancing", "Baby", "ti-ime", "[Verse]"]) {
+    for (const bad of ["love", "the", "dancing", "Baby", "ti-ime", "[Verse]", "Ang", "Add"]) {
       expect(isChord(bad), bad).toBe(false);
+    }
+  });
+});
+
+describe("readChords (OCR chord repair)", () => {
+  it("repairs a doubled root letter", () => {
+    expect(readChords("Cc")).toEqual(["C"]);
+  });
+
+  it("splits chords OCR merged into one token", () => {
+    expect(splitMergedChords("GF")).toEqual(["G", "F"]);
+    expect(splitMergedChords("Dm7G7")).toEqual(["Dm7", "G7"]);
+  });
+
+  it("never splits lyric words", () => {
+    for (const word of ["Ang", "Alam", "Baby", "love", "Ako"]) {
+      expect(readChords(word), word).toBeNull();
     }
   });
 });
@@ -158,6 +183,53 @@ describe("noise tolerance on chord rows", () => {
     const lyric = [w("You", 20, 46), w("look", 70, 46)];
     // x3 is a repeat marker, not a chord — only [G] should be inserted.
     expect(rowsToChordPro([chords, lyric])).toBe("[G]You look");
+  });
+});
+
+describe("damaged chord rows (regression: rendered as lyrics)", () => {
+  it("keeps a chord line with a doubled root over its lyric", () => {
+    // "Cc Em F Fm" over "Mayro'n akong nais malaman"
+    const chords = [w("Cc", 10, 20), w("Em", 60, 20), w("F", 110, 20), w("Fm", 150, 20)];
+    const lyric = [w("Mayro'n", 10, 46), w("akong", 100, 46), w("nais", 170, 46)];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toContain("[C]");
+    expect(out).toContain("[Em]");
+    expect(out).toContain("[Fm]");
+    expect(out).not.toContain("Cc");
+  });
+
+  it("keeps FM7 chord lines as chords", () => {
+    const chords = [w("Em", 10, 20), w("Am", 60, 20), w("FM7", 110, 20), w("G7", 170, 20)];
+    const lyric = [w("Ngunit", 10, 46), w("mayroon", 90, 46)];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toContain("[FM7]");
+    expect(out).toContain("[G7]");
+  });
+
+  it("tolerates a dash separator on a chord line", () => {
+    // "C Em FM7 - Ab G7"
+    const row = [
+      w("C", 10, 20),
+      w("Em", 40, 20),
+      w("FM7", 90, 20),
+      w("-", 150, 20),
+      w("Ab", 170, 20),
+      w("G7", 210, 20),
+    ];
+    const out = rowsToChordPro([row]);
+    expect(out).toContain("[C]");
+    expect(out).toContain("[FM7]");
+    expect(out).toContain("[Ab]");
+    expect(out).toContain("[G7]");
+  });
+
+  it("splits merged chords on a line over lyrics", () => {
+    // "Em E7 Am GF" — OCR merged the trailing "G F".
+    const chords = [w("Em", 10, 20), w("E7", 60, 20), w("Am", 110, 20), w("GF", 170, 20)];
+    const lyric = [w("Ngunit", 10, 46), w("ganoon", 90, 46), w("man", 180, 46)];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toContain("[E7]");
+    expect(out).toContain("[G][F]");
   });
 });
 

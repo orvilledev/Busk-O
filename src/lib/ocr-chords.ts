@@ -17,22 +17,12 @@ export interface OcrWord {
 }
 
 /**
- * Matches a chord token: root, optional accidental, quality, extension, and
- * slash bass — e.g. G, Em, D/F#, Cadd9, Dadd4, Am7, Cmaj7, Dsus4, E7, G7sus4.
- *
- * Handles:
- * - Root + optional accidental: [A-G][#b]?
- * - Optional quality: maj|min|m|dim|aug|add (maj7, Emaj7, etc.)
- * - Optional extension number: \d{1,2} (E7, Am9, Cmaj7, etc.)
- * - Optional sus modifier: sus[24]? (sus2, sus4, sus)
- * - Optional add modifier: add\d{1,2} (add9, add11, etc.)
- * - Optional slash bass: /[A-G][#b]? (D/F#, C/E, etc.)
- *
- * The key improvement: numbers can appear directly after root (E7) or after
- * quality (Em7) or after special modifiers (sus4, add9).
+ * Matches a chord token: root, optional accidental, quality, extension,
+ * altered tail, and slash bass — e.g. G, Em, E7, FM7, Dm7, Abdim, Cmaj7,
+ * G7sus4, Cadd9, Am7b5, D/F#.
  */
 const CHORD_RE =
-  /^[A-G][#b]?(?:(?:maj|min|m|dim|aug|add)\d{0,2}|maj\d{1,2}|m\d{1,2}|\d{1,2})?(?:sus[24]?)?(?:add\d{1,2})?(?:\/[A-G][#b]?)?$/;
+  /^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M)?\d{0,2}(?:sus\d{0,2}|add\d{1,2})?(?:[#b]\d{1,2})?(?:\/[A-G][#b]?)?$/;
 
 /** Bar/measure separators that may appear on a chord line. */
 const MEASURE_TOKENS = new Set(["|", "%", "||", ":"]);
@@ -59,9 +49,53 @@ export function normalizeToken(t: string): string {
     .replace(/[«»"'“”‘’)\]}|,.:;]+$/, "");
 }
 
+/** Dashes and dots used as separators between chords ("Am – G"). */
+const SEPARATOR_RE = /^[-–—·.]+$/;
+
 /** A token that belongs on a chord line but isn't itself a chord. */
 function isChordLineNoise(t: string): boolean {
-  return t === "" || MEASURE_TOKENS.has(t) || REPEAT_RE.test(t);
+  return (
+    t === "" || MEASURE_TOKENS.has(t) || REPEAT_RE.test(t) || SEPARATOR_RE.test(t)
+  );
+}
+
+/**
+ * Split a token that OCR merged from adjacent chords ("GF" → G F,
+ * "Dm7G7" → Dm7 G7) by greedy longest-match tokenization. Returns null
+ * unless the WHOLE token divides into 2+ chords, so lyric words like
+ * "Ang" (A + "ng"?) never split.
+ */
+export function splitMergedChords(t: string): string[] | null {
+  if (t.length < 2 || !/^[A-G]/.test(t)) return null;
+  const parts: string[] = [];
+  let i = 0;
+  while (i < t.length) {
+    let matched = "";
+    for (let j = t.length; j > i; j--) {
+      const sub = t.slice(i, j);
+      if (isChord(sub)) {
+        matched = sub;
+        break;
+      }
+    }
+    if (!matched) return null;
+    parts.push(matched);
+    i += matched.length;
+  }
+  return parts.length >= 2 ? parts : null;
+}
+
+/**
+ * Read a token as one or more chords, repairing common OCR damage:
+ * - doubled root letter: "Cc" → C
+ * - merged neighbours: "GF" → G F
+ * Returns null when the token isn't chord-like at all.
+ */
+export function readChords(t: string): string[] | null {
+  if (isChord(t)) return [t];
+  const dedoubled = t.replace(/^([A-G])\1/i, "$1");
+  if (dedoubled !== t && isChord(dedoubled)) return [dedoubled];
+  return splitMergedChords(t);
 }
 
 /**
@@ -136,8 +170,13 @@ function classifyRow(row: OcrWord[]): RowKind {
   const tokens = row
     .map((w) => normalizeToken(w.text))
     .filter((t) => !isChordLineNoise(t));
-  if (tokens.length > 0 && tokens.every(isChord)) return "chord";
-  return "lyric";
+  if (tokens.length === 0) return "lyric";
+
+  // Fuzzy: real chord lines survive a token or two of OCR damage, while
+  // lyric lines (mostly plain words) stay well under the bar. Short lyric
+  // fragments like "Am I" (50%) still classify as lyrics.
+  const chordish = tokens.filter((t) => readChords(t) !== null).length;
+  return chordish / tokens.length >= 0.7 ? "chord" : "lyric";
 }
 
 /** Build a lyric string plus a per-character x-coordinate map. */
@@ -168,19 +207,21 @@ function mergeChordLyric(chords: OcrWord[], lyricRow: OcrWord[]): string {
   const { text, charX } = layoutLyric(lyricRow);
 
   const insertions = chords
-    .map((c) => ({ x0: c.x0, chord: normalizeToken(c.text) }))
-    .filter((c) => isChord(c.chord)) // drop bars / repeat markers / noise
-    .map(({ x0, chord }) => {
+    .map((c) => ({ x0: c.x0, list: readChords(normalizeToken(c.text)) }))
+    .filter(
+      (c): c is { x0: number; list: string[] } => c.list !== null,
+    ) // drop bars / repeat markers / noise
+    .map(({ x0, list }) => {
       let idx = charX.findIndex((x) => x >= x0);
       if (idx === -1) idx = text.length; // chord past the last character
-      return { idx, chord };
+      return { idx, insert: list.map((ch) => `[${ch}]`).join("") };
     });
 
   // Apply right-to-left so earlier indices stay valid.
   insertions.sort((a, b) => b.idx - a.idx);
   let out = text;
-  for (const { idx, chord } of insertions) {
-    out = out.slice(0, idx) + `[${chord}]` + out.slice(idx);
+  for (const { idx, insert } of insertions) {
+    out = out.slice(0, idx) + insert + out.slice(idx);
   }
   return out;
 }
@@ -190,9 +231,10 @@ function chordOnlyLine(row: OcrWord[]): string {
   return row
     .map((w) => {
       const t = normalizeToken(w.text);
-      if (isChord(t)) return `[${t}]`;
+      const list = readChords(t);
+      if (list) return list.map((ch) => `[${ch}]`).join(" ");
       if (MEASURE_TOKENS.has(t)) return t;
-      return t || w.text; // repeat markers / annotations kept literally
+      return t || w.text; // repeat markers / separators kept literally
     })
     .filter(Boolean)
     .join(" ")
