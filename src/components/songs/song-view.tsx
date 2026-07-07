@@ -65,7 +65,7 @@ export function SongView({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => downloadSongPdf(song)}
+            onClick={() => downloadSongPdf(song, { semitones, capo })}
             title="Download as PDF"
           >
             <Download className="h-4 w-4" />
