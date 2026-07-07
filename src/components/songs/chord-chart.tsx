@@ -34,7 +34,6 @@ export function ChordChart({
     >
       {paragraphs.map((paragraph, pi) => {
         const isChorus = paragraph.lines.some((l) => l.isChorus());
-        let currentSection = "";
         return (
           <div
             key={pi}
@@ -42,24 +41,9 @@ export function ChordChart({
               isChorus && "border-l-2 border-accent/60 pl-3",
             )}
           >
-            {paragraph.lines.map((line, li) => {
-              // Track current section from comments
-              const comment = line.items.find(
-                (i): i is Comment | Tag =>
-                  i instanceof Comment || (i instanceof Tag && i.isComment()),
-              );
-              if (comment) {
-                const text = comment instanceof Comment ? comment.content : comment.value;
-                currentSection = text.toLowerCase();
-              }
-              return (
-                <ChartLine
-                  key={li}
-                  line={line}
-                  section={currentSection}
-                />
-              );
-            })}
+            {paragraph.lines.map((line, li) => (
+              <ChartLine key={li} line={line} />
+            ))}
           </div>
         );
       })}
@@ -67,7 +51,7 @@ export function ChordChart({
   );
 }
 
-function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
+function ChartLine({ line }: { line: Line }) {
   // Section label from a {start_of_*: label="..."} tag, if any.
   const label = line.items.find(
     (i): i is Tag => i instanceof Tag && i.isSectionStart() && i.hasLabel(),
@@ -83,8 +67,9 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
   const pairs = line.items.filter(
     (i): i is ChordLyricsPair => i instanceof ChordLyricsPair,
   );
-  const hasChords = pairs.some((p) => p.chords);
-  const hasLyrics = pairs.some((p) => (p.lyrics ?? "").trim());
+  const hasPairContent = pairs.some(
+    (p) => (p.chords ?? "").trim() || (p.lyrics ?? "").trim(),
+  );
 
   // Standalone comment line ({comment: ...}) — how OCR imports mark sections
   // (Intro, Verse, Chorus…). Note: hasRenderableItems() counts the tag itself
@@ -93,7 +78,7 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
     (i): i is Comment | Tag =>
       i instanceof Comment || (i instanceof Tag && i.isComment()),
   );
-  if (comment && !hasChords && !hasLyrics) {
+  if (comment && !hasPairContent) {
     const text = comment instanceof Comment ? comment.content : comment.value;
     return (
       <div className="mb-1 mt-2 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -104,49 +89,30 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
 
   if (pairs.length === 0) return null;
 
-  const showDashes =
-    hasChords &&
-    !hasLyrics &&
-    /^(intro|instrumental|interlude)/.test(section);
+  const hasChords = pairs.some((p) => p.chords);
 
   return (
-    <>
-      <div className="flex flex-wrap items-start gap-0.5">
-        {pairs.map((pair, i) => {
-          // Skip rendering lyrics that are just dashes/underscores/spaces (OCR
-          // artifacts from lines under chords in the image).
-          const lyricsContent = pair.lyrics ?? "";
-          const isDashOnly =
-            /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
-          return (
-            <span key={i} className="flex flex-col">
-              {hasChords && (
-                <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
-                  {pair.chords || " "}
-                </span>
-              )}
-              {!isDashOnly && (
-                <span className="whitespace-pre-wrap break-words">
-                  {lyricsContent || " "}
-                </span>
-              )}
-            </span>
-          );
-        })}
-      </div>
-      {showDashes && (
-        <div className="flex flex-wrap items-start gap-0.5 text-muted">
-          {pairs.map((pair, i) => {
-            const chordText = pair.chords ?? "";
-            const dashLength = Math.max(1, chordText.length);
-            return (
-              <span key={i} className="font-mono text-xs sm:text-sm">
-                {"-".repeat(dashLength) || " "}
+    <div className="flex flex-wrap items-start gap-0.5">
+      {pairs.map((pair, i) => {
+        // Skip rendering lyrics that are just dashes/underscores/spaces (OCR
+        // artifacts from lines under chords in the image).
+        const lyricsContent = pair.lyrics ?? "";
+        const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
+        return (
+          <span key={i} className="flex flex-col">
+            {hasChords && (
+              <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
+                {pair.chords || " "}
               </span>
-            );
-          })}
-        </div>
-      )}
-    </>
+            )}
+            {!isDashOnly && (
+              <span className="whitespace-pre-wrap break-words">
+                {lyricsContent || " "}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </div>
   );
 }
