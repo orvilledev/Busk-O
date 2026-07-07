@@ -118,21 +118,21 @@ function ChartLine({ line, section = "" }: { line: Line; section?: string }) {
         const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
         const isLastChord = i === pairs.length - 1;
         return (
-          <span key={i} className="flex items-center gap-0.5">
-            <span className="flex flex-col">
+          <span key={i} className="flex flex-col">
+            <span className="flex items-center gap-0.5 min-h-5">
               {hasChords && (
-                <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
+                <span className="font-mono text-xs font-semibold text-chord sm:text-sm">
                   {pair.chords || " "}
                 </span>
               )}
-              {!isDashOnly && (
-                <span className="whitespace-pre-wrap break-words">
-                  {lyricsContent || " "}
-                </span>
+              {showDashSeparators && !isLastChord && (
+                <span className="text-muted text-xs sm:text-sm">-</span>
               )}
             </span>
-            {showDashSeparators && !isLastChord && (
-              <span className="text-muted">-</span>
+            {!isDashOnly && (
+              <span className="whitespace-pre-wrap break-words">
+                {lyricsContent || " "}
+              </span>
             )}
           </span>
         );
