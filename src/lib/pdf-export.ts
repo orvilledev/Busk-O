@@ -7,10 +7,11 @@ import type { Song } from "@/types/domain";
 /**
  * Render a song to a clean, premium-looking chord sheet PDF.
  *
- * Unlike a naive dump of the ChordPro source, this positions each chord
- * directly above the lyric syllable it belongs to (measuring real glyph
- * widths so proportional type still aligns), styles section labels, marks
- * choruses with an accent rule, and brands the footer as the source.
+ * Chords are positioned directly above the lyric syllable they belong to
+ * (measuring real glyph widths so proportional type still aligns). The body
+ * flows in two columns — left, then right, then onto a new page — so most
+ * songs fit on a single sheet; long ones spill over naturally. Section labels
+ * are styled, choruses get an accent rule, and the footer brands the source.
  */
 
 // --- Palette (print-legible on white) ----------------------------------------
@@ -20,24 +21,26 @@ const ACCENT: [number, number, number] = [201, 110, 16]; // amber, dark enough f
 const RULE: [number, number, number] = [226, 226, 230];
 
 // --- Type sizes (pt) ----------------------------------------------------------
-const TITLE = 22;
-const ARTIST = 12.5;
-const META = 9.5;
-const SECTION = 9.5;
-const CHORD = 9;
-const LYRIC = 11;
+const TITLE = 20;
+const ARTIST = 11.5;
+const META = 9;
+const SECTION = 8.5;
+const CHORD = 8;
+const LYRIC = 10;
 const FOOTER = 8;
 
 // --- Geometry (mm) ------------------------------------------------------------
-const MARGIN = 18;
-const TOP = 18;
-const CHORD_ROW = 4.4;
-const LYRIC_ROW = 5.9;
-const CHORD_GAP = 1.6; // min breathing room after a chord
-const SECTION_BEFORE = 4.5;
-const SECTION_AFTER = 1.6;
-const PARA_GAP = 3.4;
-const CHORUS_INDENT = 5;
+// Tuned so a typical song fits in two columns on one page; long songs spill.
+const MARGIN = 15;
+const TOP = 14;
+const GUTTER = 8; // space between the two columns
+const CHORD_ROW = 3.6;
+const LYRIC_ROW = 4.9;
+const CHORD_GAP = 1.4; // min breathing room after a chord
+const SECTION_BEFORE = 3.2;
+const SECTION_AFTER = 1.1;
+const PARA_GAP = 2.4;
+const CHORUS_INDENT = 4;
 
 const REPEAT_RE = /^\(?(?:x\d+|\d+x)\)?$/i;
 const NOTATION_RE = /^(?:[|%:]+|[·._\s–—-]+)$/;
@@ -64,16 +67,24 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const contentW = pageW - MARGIN * 2;
-  const rightX = MARGIN + contentW;
-  const pageBottom = pageH - 16; // leave room for footer
+  const rightEdge = MARGIN + contentW;
+  const pageBottom = pageH - 15; // leave room for footer
+  const colWidth = (contentW - GUTTER) / 2;
 
-  // Mutable render cursor.
-  const st = { y: TOP, left: MARGIN };
+  // Mutable render cursor. `col` is the active column (0 = left, 1 = right);
+  // `pageTop` is where columns begin on the current page (below the header on
+  // page 1, at TOP thereafter).
+  const st = { y: TOP, col: 0, pageTop: TOP, chorus: false };
 
   const setColor = (c: [number, number, number]) =>
     pdf.setTextColor(c[0], c[1], c[2]);
   const setDraw = (c: [number, number, number]) =>
     pdf.setDrawColor(c[0], c[1], c[2]);
+
+  // Column geometry for the current cursor.
+  const colBaseX = (col = st.col) => MARGIN + col * (colWidth + GUTTER);
+  const leftX = () => colBaseX() + (st.chorus ? CHORUS_INDENT : 0);
+  const rightX = () => colBaseX() + colWidth;
 
   const measure = (text: string, size: number, bold: boolean) => {
     pdf.setFont("helvetica", bold ? "bold" : "normal");
@@ -81,37 +92,43 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
     return pdf.getTextWidth(text);
   };
 
-  const newPage = () => {
-    pdf.addPage();
-    st.y = TOP;
+  // Move to the next column, or the next page's left column when the right
+  // column is full. This is the single place flow crosses a boundary.
+  const advanceFlow = () => {
+    if (st.col === 0) {
+      st.col = 1;
+      st.y = st.pageTop;
+    } else {
+      pdf.addPage();
+      st.pageTop = TOP;
+      st.col = 0;
+      st.y = TOP;
+    }
   };
 
   const ensure = (needed: number) => {
-    if (st.y + needed > pageBottom) newPage();
+    if (st.y + needed > pageBottom) advanceFlow();
   };
 
-  // --- Header ---------------------------------------------------------------
+  // --- Header (spans full width on page 1) ----------------------------------
   const drawHeader = () => {
-    // Title (wraps if long).
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(TITLE);
     setColor(INK);
     const titleLines = pdf.splitTextToSize(song.title || "Untitled", contentW);
     for (const line of titleLines) {
-      pdf.text(line, MARGIN, st.y + 7.5);
-      st.y += 8.6;
+      pdf.text(line, MARGIN, st.y + 7.2);
+      st.y += 8.2;
     }
 
-    // Artist.
     if (song.artist) {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(ARTIST);
       setColor(MUTED);
       pdf.text(song.artist, MARGIN, st.y + 4);
-      st.y += 6.6;
+      st.y += 6.4;
     }
 
-    // Meta row: key · capo · tempo · time.
     const base = isKey(song.original_key) ? song.original_key : null;
     const soundingKey = base ? transposeKey(base, semitones) : null;
     const shapeKey = base ? transposeKey(base, shapeSemitones) : null;
@@ -129,25 +146,28 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
     }
 
     st.y += 1.5;
-    // Rule: full-width hairline with a short amber accent overlay.
     setDraw(RULE);
     pdf.setLineWidth(0.4);
-    pdf.line(MARGIN, st.y, rightX, st.y);
+    pdf.line(MARGIN, st.y, rightEdge, st.y);
     setDraw(ACCENT);
     pdf.setLineWidth(1.3);
     pdf.line(MARGIN, st.y, MARGIN + 26, st.y);
-    st.y += 6.5;
+    st.y += 6;
+
+    // Columns start below the header on this page.
+    st.pageTop = st.y;
+    st.col = 0;
   };
 
   // --- Section label --------------------------------------------------------
   const drawSection = (label: string) => {
-    ensure(SECTION_BEFORE + 6 + LYRIC_ROW);
+    ensure(SECTION_BEFORE + 5.4 + LYRIC_ROW);
     st.y += SECTION_BEFORE;
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(SECTION);
     setColor(ACCENT);
-    pdf.text(label.toUpperCase(), st.left, st.y + 3.2, { charSpace: 0.45 });
-    st.y += 5.4 + SECTION_AFTER;
+    pdf.text(label.toUpperCase(), leftX(), st.y + 3.0, { charSpace: 0.4 });
+    st.y += 5.0 + SECTION_AFTER;
   };
 
   // --- Chord-over-lyric line ------------------------------------------------
@@ -158,10 +178,10 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
     const rowH = (hasChords ? CHORD_ROW : 0) + LYRIC_ROW;
     ensure(rowH);
     let top = st.y;
-    let x = st.left;
+    let x = leftX();
 
-    const chordBase = () => top + 3.3;
-    const lyricBase = () => top + (hasChords ? CHORD_ROW : 0) + 4.3;
+    const chordBase = () => top + 3.0;
+    const lyricBase = () => top + (hasChords ? CHORD_ROW : 0) + 4.0;
 
     for (const s of segs) {
       const lw = measure(s.lyric, LYRIC, false);
@@ -169,13 +189,13 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
       const adv = Math.max(lw, cw);
 
       // Wrap to a fresh chord+lyric row when we'd overflow the text column.
-      if (x + adv > rightX && x > st.left) {
+      if (x + adv > rightX() && x > leftX()) {
         top += rowH;
         if (top + rowH > pageBottom) {
-          pdf.addPage();
-          top = TOP;
+          advanceFlow();
+          top = st.y;
         }
-        x = st.left;
+        x = leftX();
       }
 
       if (hasChords && s.chord) {
@@ -211,19 +231,19 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
     }
     if (tokens.length === 0 && markers.length === 0) return;
 
-    const rowH = CHORD_ROW + 3.2;
+    const rowH = CHORD_ROW + 3.0;
     ensure(rowH);
     let top = st.y;
-    let x = st.left;
-    const base = () => top + 4;
+    let x = leftX();
+    const base = () => top + 3.6;
     const wrapIfNeeded = (w: number) => {
-      if (x + w > rightX && x > st.left) {
+      if (x + w > rightX() && x > leftX()) {
         top += rowH;
         if (top + rowH > pageBottom) {
-          pdf.addPage();
-          top = TOP;
+          advanceFlow();
+          top = st.y;
         }
-        x = st.left;
+        x = leftX();
       }
     };
 
@@ -316,21 +336,26 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
   const parsed = transpose(parse(song.body), shapeSemitones);
   const paragraphs = parsed.bodyParagraphs;
   paragraphs.forEach((para, pi) => {
-    const isChorus = para.lines.some((l) => l.isChorus());
-    st.left = isChorus ? MARGIN + CHORUS_INDENT : MARGIN;
+    st.chorus = para.lines.some((l) => l.isChorus());
     const startPage = pdf.getCurrentPageInfo().pageNumber;
+    const startCol = st.col;
     const startY = st.y;
 
     for (const line of para.lines) renderLine(line);
 
-    // Accent rule down the side of a chorus (only when it didn't page-break).
-    if (isChorus && pdf.getCurrentPageInfo().pageNumber === startPage) {
+    // Accent rule beside a chorus — only when it stayed in one column.
+    if (
+      st.chorus &&
+      pdf.getCurrentPageInfo().pageNumber === startPage &&
+      st.col === startCol
+    ) {
+      const bx = colBaseX(startCol);
       setDraw(ACCENT);
-      pdf.setLineWidth(1.1);
-      pdf.line(MARGIN + 1.5, startY - 1, MARGIN + 1.5, st.y - 2.5);
+      pdf.setLineWidth(1.0);
+      pdf.line(bx + 1.2, startY - 0.5, bx + 1.2, st.y - 2.2);
     }
 
-    st.left = MARGIN;
+    st.chorus = false;
     if (pi < paragraphs.length - 1) st.y += PARA_GAP;
   });
 
@@ -338,10 +363,10 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
   const total = pdf.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     pdf.setPage(i);
-    const fy = pageH - 10;
+    const fy = pageH - 9;
     setDraw(RULE);
     pdf.setLineWidth(0.3);
-    pdf.line(MARGIN, fy - 4.5, rightX, fy - 4.5);
+    pdf.line(MARGIN, fy - 4.5, rightEdge, fy - 4.5);
 
     pdf.setFontSize(FOOTER);
     pdf.setFont("helvetica", "bold");
@@ -353,7 +378,7 @@ export function generateSongPdf(song: Song, opts: PdfOptions = {}): jsPDF {
     pdf.text("Chords, lyrics & setlists for the stage", pageW / 2, fy, {
       align: "center",
     });
-    pdf.text(`${i} / ${total}`, rightX, fy, { align: "right" });
+    pdf.text(`${i} / ${total}`, rightEdge, fy, { align: "right" });
   }
 
   return pdf;
