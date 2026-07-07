@@ -49,5 +49,5 @@ export default async function PlayPage({
 
   if (songs.length === 0) redirect(`/setlists/${id}`);
 
-  return <StageMode setlistId={id} songs={songs} />;
+  return <StageMode exitHref={`/setlists/${id}`} songs={songs} />;
 }

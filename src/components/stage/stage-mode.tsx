@@ -47,10 +47,11 @@ function renderSemitones(song: StageSong): number {
 }
 
 export function StageMode({
-  setlistId,
+  exitHref,
   songs,
 }: {
-  setlistId: string;
+  /** Where the X button and Escape return to. */
+  exitHref: string;
   songs: StageSong[];
 }) {
   const router = useRouter();
@@ -66,6 +67,7 @@ export function StageMode({
 
   const current = songs[index];
   const last = songs.length - 1;
+  const single = songs.length === 1;
 
   const go = useCallback(
     (dir: number) => {
@@ -92,12 +94,12 @@ export function StageMode({
       } else if (e.key === "s" || e.key === "S") {
         setScrolling((s) => !s);
       } else if (e.key === "Escape") {
-        router.push(`/setlists/${setlistId}`);
+        router.push(exitHref);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, router, setlistId, setScrolling]);
+  }, [go, router, exitHref, setScrolling]);
 
   if (!current) return null;
 
@@ -119,9 +121,11 @@ export function StageMode({
         <div className="min-w-0">
           <div className="truncate text-lg font-bold">{current.title}</div>
           <div className="flex items-center gap-2 text-xs text-muted">
-            <span>
-              {index + 1} / {songs.length}
-            </span>
+            {!single && (
+              <span>
+                {index + 1} / {songs.length}
+              </span>
+            )}
             {shapeKey &&
               (current.capo ? (
                 <span>
@@ -177,15 +181,17 @@ export function StageMode({
           >
             <Plus className="h-4 w-4" />
           </button>
+          {!single && (
+            <button
+              onClick={() => setShowList((s) => !s)}
+              aria-label="Jump to song"
+              className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
+            >
+              <List className="h-4 w-4" />
+            </button>
+          )}
           <button
-            onClick={() => setShowList((s) => !s)}
-            aria-label="Jump to song"
-            className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
-          >
-            <List className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => router.push(`/setlists/${setlistId}`)}
+            onClick={() => router.push(exitHref)}
             aria-label="Exit stage mode"
             className="rounded-md border border-border px-2 py-1 hover:bg-surface-2"
           >
@@ -206,17 +212,21 @@ export function StageMode({
           touchStartX.current = null;
         }}
       >
-        {/* Left / right tap zones */}
-        <button
-          aria-label="Previous song"
-          onClick={() => go(-1)}
-          className="absolute left-0 top-0 z-10 h-full w-[15%]"
-        />
-        <button
-          aria-label="Next song"
-          onClick={() => go(1)}
-          className="absolute right-0 top-0 z-10 h-full w-[15%]"
-        />
+        {/* Left / right tap zones (only meaningful with more than one song) */}
+        {!single && (
+          <>
+            <button
+              aria-label="Previous song"
+              onClick={() => go(-1)}
+              className="absolute left-0 top-0 z-10 h-full w-[15%]"
+            />
+            <button
+              aria-label="Next song"
+              onClick={() => go(1)}
+              className="absolute right-0 top-0 z-10 h-full w-[15%]"
+            />
+          </>
+        )}
 
         <div className="mx-auto max-w-4xl px-6 py-6">
           <ChordChart
@@ -229,21 +239,29 @@ export function StageMode({
 
       {/* Bottom nav */}
       <div className="flex items-center justify-between border-t border-border px-4 py-2">
-        <button
-          onClick={() => go(-1)}
-          disabled={index === 0}
-          className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm hover:bg-surface-2 disabled:opacity-30"
-        >
-          <ChevronLeft className="h-5 w-5" /> Prev
-        </button>
+        {single ? (
+          <span aria-hidden />
+        ) : (
+          <button
+            onClick={() => go(-1)}
+            disabled={index === 0}
+            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm hover:bg-surface-2 disabled:opacity-30"
+          >
+            <ChevronLeft className="h-5 w-5" /> Prev
+          </button>
+        )}
         <span className="text-sm text-muted">{current.artist}</span>
-        <button
-          onClick={() => go(1)}
-          disabled={index === last}
-          className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm hover:bg-surface-2 disabled:opacity-30"
-        >
-          Next <ChevronRight className="h-5 w-5" />
-        </button>
+        {single ? (
+          <span aria-hidden />
+        ) : (
+          <button
+            onClick={() => go(1)}
+            disabled={index === last}
+            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm hover:bg-surface-2 disabled:opacity-30"
+          >
+            Next <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Quick-jump overlay */}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Trash2, Type, RotateCcw, Download } from "lucide-react";
+import { Pencil, Trash2, Type, RotateCcw, Download, Play } from "lucide-react";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { ChordChart } from "./chord-chart";
 import { FavoriteButton } from "./favorite-button";
@@ -62,6 +62,12 @@ export function SongView({
             initial={song.favorite ?? false}
             className="border border-border"
           />
+          <Link href={`/songs/${song.id}/play`}>
+            <Button size="sm" title="Play (stage view)">
+              <Play className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline"> Play</span>
+            </Button>
+          </Link>
           <Button
             variant="secondary"
             size="sm"
