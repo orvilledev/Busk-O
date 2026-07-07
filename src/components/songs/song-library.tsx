@@ -81,12 +81,14 @@ export function SongLibrary({ songs }: { songs: SongRow[] }) {
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <Music className="h-4 w-4 shrink-0 text-muted" />
-                  <span className="truncate font-medium">{song.title}</span>
-                  {song.artist && (
-                    <span className="truncate text-sm text-muted">
-                      {song.artist}
-                    </span>
-                  )}
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-medium">{song.title}</span>
+                    {song.artist && (
+                      <span className="truncate text-sm text-muted">
+                        {song.artist}
+                      </span>
+                    )}
+                  </span>
                 </span>
                 {song.original_key && (
                   <span className="ml-2 shrink-0 rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted">
