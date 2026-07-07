@@ -93,18 +93,26 @@ function ChartLine({ line }: { line: Line }) {
 
   return (
     <div className="flex flex-wrap items-start gap-0.5">
-      {pairs.map((pair, i) => (
-        <span key={i} className="flex flex-col">
-          {hasChords && (
-            <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
-              {pair.chords || " "}
-            </span>
-          )}
-          <span className="whitespace-pre-wrap break-words">
-            {pair.lyrics || " "}
+      {pairs.map((pair, i) => {
+        // Skip rendering lyrics that are just dashes/underscores/spaces (OCR
+        // artifacts from lines under chords in the image).
+        const lyricsContent = pair.lyrics ?? "";
+        const isDashOnly = /^[\s_–—-]*$/.test(lyricsContent) && lyricsContent.trim() !== "";
+        return (
+          <span key={i} className="flex flex-col">
+            {hasChords && (
+              <span className="min-h-5 font-mono text-xs font-semibold text-chord sm:text-sm">
+                {pair.chords || " "}
+              </span>
+            )}
+            {!isDashOnly && (
+              <span className="whitespace-pre-wrap break-words">
+                {lyricsContent || " "}
+              </span>
+            )}
           </span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
