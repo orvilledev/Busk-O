@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Trash2, Type, RotateCcw } from "lucide-react";
+import { Pencil, Trash2, Type, RotateCcw, Download } from "lucide-react";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { ChordChart } from "./chord-chart";
 import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
+import { downloadSongPdf } from "@/lib/pdf-export";
 import type { Song } from "@/types/domain";
 
 const isKey = (k: string | null): k is Key =>
@@ -61,6 +62,15 @@ export function SongView({
             initial={song.favorite ?? false}
             className="border border-border"
           />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => downloadSongPdf(song)}
+            title="Download as PDF"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline"> PDF</span>
+          </Button>
           <Link href={`/songs/${song.id}/edit`}>
             <Button variant="secondary" size="sm">
               <Pencil className="h-4 w-4" />
