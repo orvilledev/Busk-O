@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseConfigured } from "./config";
 
 /** Public routes reachable without a session. */
-const PUBLIC_PATHS = ["/login", "/auth", "/offline", "/try"];
+const PUBLIC_PATHS = ["/login", "/auth", "/offline", "/try", "/tuner"];
 
 /**
  * Refreshes the Supabase auth session on every request and guards private

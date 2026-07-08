@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Music } from "lucide-react";
+import { AudioLines, Music } from "lucide-react";
 import { Playground } from "@/components/try/playground";
 
 export const metadata = { title: "Try Busk-O" };
@@ -13,6 +13,12 @@ export default function TryPage() {
             <Music className="h-4 w-4" />
           </span>
           Busk-O
+        </Link>
+        <Link
+          href="/tuner"
+          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
+        >
+          <AudioLines className="h-4 w-4" /> Tuner
         </Link>
       </div>
       <Playground />

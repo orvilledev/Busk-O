@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Music, ScanLine, Shield } from "lucide-react";
+import { AudioLines, LogOut, Music, ScanLine, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SyncIndicator } from "@/components/offline/sync-indicator";
 import { useCanEditSongs, useCanManageRoles } from "@/components/role-provider";
@@ -15,6 +15,7 @@ export function AppNav() {
   const pathname = usePathname();
   const importActive = pathname.startsWith("/import");
   const membersActive = pathname.startsWith("/members");
+  const tunerActive = pathname.startsWith("/tuner");
   const canEdit = useCanEditSongs();
   const canManageRoles = useCanManageRoles();
 
@@ -29,6 +30,18 @@ export function AppNav() {
         </Link>
 
         <div className="ml-auto flex items-center gap-1">
+          <Link
+            href="/tuner"
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+              tunerActive
+                ? "bg-surface-2 text-foreground"
+                : "text-muted hover:text-foreground",
+            )}
+          >
+            <AudioLines className="h-4 w-4" />
+            <span className="hidden sm:inline">Tuner</span>
+          </Link>
           {canManageRoles && (
             <Link
               href="/members"
