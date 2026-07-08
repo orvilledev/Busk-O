@@ -34,3 +34,52 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Gentle idle motion for the landing mascot, chart card, and drifting chords. */
+@keyframes busk-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+@keyframes busk-float-2 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+@keyframes busk-bob {
+  0%,
+  100% {
+    transform: translateY(0) var(--busk-bob-rotate, rotate(0));
+  }
+  50% {
+    transform: translateY(-6px) var(--busk-bob-rotate, rotate(0));
+  }
+}
+.animate-busk-float {
+  animation: busk-float 5.5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.animate-busk-float-2 {
+  animation: busk-float-2 4.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.animate-busk-bob {
+  animation: busk-bob 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-busk-float,
+  .animate-busk-float-2,
+  .animate-busk-bob {
+    animation: none;
+  }
+}
