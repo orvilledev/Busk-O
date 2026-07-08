@@ -162,14 +162,19 @@ export function CapybaraHero({ className }: { className?: string }) {
           <rect x="156" y="196" width="18" height="6" rx="2" fill="#5b3a1a" />
         </g>
 
-        {/* paws resting on the guitar */}
-        <ellipse cx="82" cy="166" rx="11" ry="9" fill="url(#capyBody)" />
-        <ellipse cx="158" cy="200" rx="12" ry="10" fill="url(#capyBody)" />
+        {/* arms reaching from the body down onto the guitar */}
+        <g stroke="url(#capyBody)" strokeWidth="21" strokeLinecap="round">
+          <line x1="104" y1="151" x2="80" y2="169" />
+          <line x1="153" y1="152" x2="161" y2="197" />
+        </g>
+        {/* paws holding it */}
+        <ellipse cx="78" cy="171" rx="13" ry="11" fill="url(#capyBody)" />
+        <ellipse cx="162" cy="199" rx="13" ry="11" fill="url(#capyBody)" />
         <g stroke="#7c3d0a" strokeWidth="2" strokeLinecap="round">
-          <line x1="77" y1="171" x2="76" y2="176" />
-          <line x1="83" y1="172" x2="82" y2="177" />
-          <line x1="153" y1="206" x2="152" y2="211" />
-          <line x1="159" y1="207" x2="158" y2="212" />
+          <line x1="72" y1="176" x2="71" y2="181" />
+          <line x1="79" y1="177" x2="78" y2="182" />
+          <line x1="157" y1="204" x2="156" y2="209" />
+          <line x1="164" y1="205" x2="163" y2="210" />
         </g>
       </g>
 

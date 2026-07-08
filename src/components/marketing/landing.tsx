@@ -5,44 +5,45 @@ import {
   Check,
   ListMusic,
   Music,
-  ScanLine,
+  Play,
   Sparkles,
-  Users,
+  Type,
   WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CapybaraBadge, CapybaraHero } from "@/components/brand/capybara";
+import { CapybaraBadge } from "@/components/brand/capybara";
+import { GuitarArt } from "@/components/brand/guitar";
 
 const features = [
   {
     icon: Music,
     title: "Chords over lyrics",
-    body: "Clean ChordPro charts with every chord locked above the right word.",
-  },
-  {
-    icon: ListMusic,
-    title: "Setlists for the stage",
-    body: "Line up your songs, reorder in a tap, and launch a distraction-free Play mode.",
+    body: "Every chord sits right above the word you sing it on, so you never lose your place.",
   },
   {
     icon: ArrowUpDown,
-    title: "Transpose instantly",
-    body: "Shift to any key on the fly — capo-friendly and ready for whoever's singing.",
+    title: "Transpose to your key",
+    body: "Shift any song to a key that fits your voice — capo-friendly, in a single tap.",
   },
   {
-    icon: ScanLine,
-    title: "Paste a screenshot",
-    body: "OCR reads a photo of a chart straight into your editor. No retyping.",
+    icon: Play,
+    title: "Play mode for the stage",
+    body: "A clean, distraction-free view built for reading a chart mid-song.",
+  },
+  {
+    icon: ListMusic,
+    title: "Follow your setlist",
+    body: "Swipe through the set in order and never wonder what comes next.",
+  },
+  {
+    icon: Type,
+    title: "Size it for the stage",
+    body: "Bump the text bigger so you can read the chart from behind the mic.",
   },
   {
     icon: WifiOff,
     title: "Works offline",
-    body: "Installable PWA — your charts load on any stage, signal or not.",
-  },
-  {
-    icon: Users,
-    title: "Bring the team",
-    body: "Roles for admins and members keep everyone on the same page.",
+    body: "Charts load with or without signal, so a dead spot never stops the set.",
   },
 ];
 
@@ -104,8 +105,8 @@ export function Landing({ configured }: { configured: boolean }) {
           </h1>
 
           <p className="mt-5 max-w-md text-base text-muted sm:text-lg">
-            Busk-O keeps your charts clean, your setlists tight, and your key one
-            tap away — online or off.
+            Pull up any song, drop it into your key, and play — chords and lyrics
+            laid out for the stage, online or off.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -130,37 +131,10 @@ export function Landing({ configured }: { configured: boolean }) {
           </ul>
         </div>
 
-        {/* hero visual: capybara + a live-looking chart card + drifting chords */}
+        {/* hero visual: an artistic acoustic guitar */}
         <div className="relative mx-auto flex h-80 w-full max-w-sm items-center justify-center sm:h-96 lg:h-[26rem]">
           <div className="absolute h-64 w-64 rounded-full bg-accent/15 blur-3xl" />
-          <CapybaraHero className="relative z-10 w-64 max-w-full sm:w-72 lg:w-80" />
-
-          <div
-            style={{ "--busk-bob-rotate": "rotate(-3deg)" } as React.CSSProperties}
-            className="absolute -bottom-2 -left-1 z-20 w-52 rounded-2xl border border-border bg-surface/90 p-4 shadow-2xl backdrop-blur animate-busk-bob sm:-left-4"
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-accent" />
-              <span className="text-xs font-medium text-muted">It Is Well</span>
-              <span className="ml-auto rounded-md bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                Key C
-              </span>
-            </div>
-            <div className="border-l-2 border-accent/60 pl-3">
-              <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted">
-                Chorus
-              </div>
-              <div className="space-y-1.5 font-mono text-[11px] leading-tight">
-                <div>
-                  <span className="font-semibold text-chord">C</span> It is well
-                </div>
-                <div>
-                  <span className="font-semibold text-chord">G7</span> with my{" "}
-                  <span className="font-semibold text-chord">C</span> soul
-                </div>
-              </div>
-            </div>
-          </div>
+          <GuitarArt className="relative z-10 w-64 max-w-full sm:w-72 lg:w-80" />
         </div>
       </section>
 
@@ -195,7 +169,7 @@ export function Landing({ configured }: { configured: boolean }) {
               Ready when you are.
             </h2>
             <p className="mx-auto mt-2 max-w-md text-muted">
-              Load up your first set and let the capybara hold the words.
+              Open your set, and let the capybara hold the words.
             </p>
             <div className="mt-6 flex justify-center">
               <Link href={primaryHref}>
