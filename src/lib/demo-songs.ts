@@ -7,54 +7,25 @@ export interface DemoSong {
 
 export const DEMO_SONGS: DemoSong[] = [
   {
-    title: "Amazing Grace",
+    title: "Leaving On A Jet Plane",
     key: "G",
-    body: `{title: Amazing Grace}
+    body: `{title: Leaving On A Jet Plane}
 {key: G}
 
 {start_of_verse}
-[G]Amazing [G7]grace, how [C]sweet the [G]sound
-That saved a [G]wretch like [D]me
-I [G]once was [G7]lost, but [C]now am [G]found
-Was [Em]blind but [D]now I [G]see
-{end_of_verse}
-
-{start_of_verse}
-'Twas [G]grace that [G7]taught my [C]heart to [G]fear
-And grace my [G]fears re[D]lieved
-How [G]precious [G7]did that [C]grace ap[G]pear
-The [Em]hour I [D]first be[G]lieved
-{end_of_verse}`,
-  },
-  {
-    title: "It Is Well",
-    key: "C",
-    body: `{title: It Is Well with My Soul}
-{key: C}
-
-{start_of_verse}
-[C]When peace like a river atten[G]deth my [C]way
-When [C]sorrows like sea [G]billows [G7]roll
-What[C]ever my lot, Thou hast [F]taught me to [C]say
-It is [C]well, it is [G7]well with my [C]soul
+[G]All my bags are packed, I'm [D]ready to go
+I'm [D]standing here outside your [G]door
+[G]I hate to wake you up to [D]say goodbye
+But the [D]dawn is breaking, it's [G]early morn
 {end_of_verse}
 
 {start_of_chorus}
-It is [C]well [C7]with my [F]soul
-It is [C]well, it is [G7]well with my [C]soul
+So [G]kiss me and smile for [D]me
+Tell me that you'll [G]wait for me
+[Am]Hold me like you'll never let me [D]go
+Cause I'm [G]leaving on a jet [D]plane
+Don't know when I'll be back [G]again
+Oh [G]babe, I hate to [D]go
 {end_of_chorus}`,
-  },
-  {
-    title: "Come Thou Fount",
-    key: "D",
-    body: `{title: Come Thou Fount of Every Blessing}
-{key: D}
-
-{start_of_verse}
-[D]Come Thou fount of [G]every [D]blessing
-Tune my [D]heart to [A]sing Thy [A7]grace
-[D]Streams of mercy, [G]never [D]ceasing
-Call for [D]songs of [A]loudest [D]praise
-{end_of_verse}`,
   },
 ];

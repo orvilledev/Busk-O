@@ -3,11 +3,18 @@
  * decorative rosette, glossy highlights, and a couple of notes drifting up.
  * Pure inline SVG (no assets, no client JS); tinted from the theme's palette.
  */
-export function GuitarArt({ className }: { className?: string }) {
+export function GuitarArt({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <svg
       viewBox="0 0 300 340"
       className={className}
+      style={style}
       role="img"
       aria-label="An acoustic guitar"
       xmlns="http://www.w3.org/2000/svg"

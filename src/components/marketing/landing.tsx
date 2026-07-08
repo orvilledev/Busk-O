@@ -12,38 +12,27 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CapybaraBadge } from "@/components/brand/capybara";
-import { GuitarArt } from "@/components/brand/guitar";
 
 const features = [
   {
-    icon: Music,
-    title: "Chords over lyrics",
-    body: "Every chord sits right above the word you sing it on, so you never lose your place.",
+    icon: Check,
+    title: "Accurate chords and lyrics",
+    body: "Every chord sits above the exact word you sing.",
   },
   {
     icon: ArrowUpDown,
     title: "Transpose to your key",
-    body: "Shift any song to a key that fits your voice — capo-friendly, in a single tap.",
+    body: "Shift any song to fit your voice, capo-friendly.",
   },
   {
     icon: Play,
-    title: "Play mode for the stage",
-    body: "A clean, distraction-free view built for reading a chart mid-song.",
+    title: "Auto scroll while playing",
+    body: "Follow along hands-free during the performance.",
   },
   {
-    icon: ListMusic,
-    title: "Follow your setlist",
-    body: "Swipe through the set in order and never wonder what comes next.",
-  },
-  {
-    icon: Type,
-    title: "Size it for the stage",
-    body: "Bump the text bigger so you can read the chart from behind the mic.",
-  },
-  {
-    icon: WifiOff,
-    title: "Works offline",
-    body: "Charts load with or without signal, so a dead spot never stops the set.",
+    icon: Sparkles,
+    title: "Simple and easy to use design",
+    body: "No clutter, just your chords and lyrics on stage.",
   },
 ];
 
@@ -83,12 +72,7 @@ export function Landing({ configured }: { configured: boolean }) {
       {/* HERO */}
       <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-20 pt-6 lg:grid-cols-2 lg:gap-8 lg:pt-14">
         <div className="flex flex-col items-start">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/70 px-3 py-1 text-xs font-medium text-muted backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-accent" /> For worship teams &amp;
-            buskers
-          </span>
-
-          <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             Every chord and lyric,{" "}
             <span
               className="text-transparent"
@@ -106,7 +90,7 @@ export function Landing({ configured }: { configured: boolean }) {
 
           <p className="mt-5 max-w-md text-base text-muted sm:text-lg">
             Pull up any song, drop it into your key, and play — chords and lyrics
-            laid out for the stage, online or off.
+            laid out for the stage.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -123,7 +107,7 @@ export function Landing({ configured }: { configured: boolean }) {
           </div>
 
           <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
-            {["Works offline", "Free to try", "No install needed"].map((t) => (
+            {["Free to try", "No install needed"].map((t) => (
               <li key={t} className="flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-accent" /> {t}
               </li>
@@ -131,11 +115,6 @@ export function Landing({ configured }: { configured: boolean }) {
           </ul>
         </div>
 
-        {/* hero visual: an artistic acoustic guitar */}
-        <div className="relative mx-auto flex h-80 w-full max-w-sm items-center justify-center sm:h-96 lg:h-[26rem]">
-          <div className="absolute h-64 w-64 rounded-full bg-accent/15 blur-3xl" />
-          <GuitarArt className="relative z-10 w-64 max-w-full sm:w-72 lg:w-80" />
-        </div>
       </section>
 
       {/* FEATURES */}
@@ -153,32 +132,6 @@ export function Landing({ configured }: { configured: boolean }) {
               <p className="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-5 pb-20">
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-surface p-8 text-center sm:p-14">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-56 w-[36rem] max-w-full -translate-x-1/2 rounded-full bg-accent/15 blur-[90px]"
-          />
-          <div className="relative">
-            <CapybaraBadge className="mx-auto h-12 w-12" />
-            <h2 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
-              Ready when you are.
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-muted">
-              Open your set, and let the capybara hold the words.
-            </p>
-            <div className="mt-6 flex justify-center">
-              <Link href={primaryHref}>
-                <Button size="lg">
-                  {primaryLabel} <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
         </div>
       </section>
 
