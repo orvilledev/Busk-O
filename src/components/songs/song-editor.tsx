@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { chordsOverWordsToChordPro, KEYS } from "@/lib/chordpro";
 import { useOcrPaste } from "@/hooks/use-ocr-paste";
@@ -31,7 +31,23 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
   const [body, setBody] = useState(initial.body ?? "");
   const [submitting, setSubmitting] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>();
   const { ocr, handlePaste } = useOcrPaste(body, setBody, bodyRef);
+
+  // Keep the editor at least as tall as the preview so the two columns line up
+  // for reference — side by side (where the grid also stretches them) and, on
+  // narrow screens, when they stack. Tracks content, resize, and breakpoint
+  // changes via the preview's rendered height.
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const measure = () => setPreviewHeight(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   function handleConvert() {
     // Interpret the current textarea as chords-over-lyrics and rewrite it as
@@ -138,7 +154,10 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
           </Button>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          <div className="relative">
+          <div
+            className="relative h-full min-h-80"
+            style={previewHeight ? { minHeight: previewHeight } : undefined}
+          >
             <textarea
               id="body"
               name="body"
@@ -147,7 +166,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               onChange={(e) => setBody(e.target.value)}
               onPaste={handlePaste}
               spellCheck={false}
-              className={`${field} min-h-80 w-full font-mono`}
+              className={`${field} h-full min-h-80 w-full font-mono`}
               placeholder={
                 "{start_of_verse}\n[G]Amazing [C]grace...\n{end_of_verse}\n\n(Tip: paste a screenshot of a chart here)"
               }
@@ -159,7 +178,10 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               </div>
             )}
           </div>
-          <div className="min-h-80 overflow-auto rounded-lg border border-border bg-surface p-3">
+          <div
+            ref={previewRef}
+            className="min-h-80 overflow-auto rounded-lg border border-border bg-surface p-3"
+          >
             {body.trim() ? (
               <ChordChart source={body} />
             ) : (
