@@ -1,6 +1,7 @@
-/** Public-domain hymns bundled for the backend-free "try" playground. */
+/** Songs bundled for the backend-free "try" playground. */
 export interface DemoSong {
   title: string;
+  artist?: string;
   key: string;
   body: string;
 }
@@ -8,6 +9,7 @@ export interface DemoSong {
 export const DEMO_SONGS: DemoSong[] = [
   {
     title: "Leaving On A Jet Plane",
+    artist: "John Denver",
     key: "G",
     body: `{title: Leaving On A Jet Plane}
 {artist: John Denver}
