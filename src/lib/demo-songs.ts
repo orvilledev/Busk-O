@@ -10,22 +10,42 @@ export const DEMO_SONGS: DemoSong[] = [
     title: "Leaving On A Jet Plane",
     key: "G",
     body: `{title: Leaving On A Jet Plane}
+{artist: John Denver}
 {key: G}
 
-{start_of_verse}
-[G]All my bags are packed, I'm [D]ready to go
-I'm [D]standing here outside your [G]door
-[G]I hate to wake you up to [D]say goodbye
-But the [D]dawn is breaking, it's [G]early morn
-{end_of_verse}
+{comment: Intro}
+[D]
 
-{start_of_chorus}
-So [G]kiss me and smile for [D]me
-Tell me that you'll [G]wait for me
-[Am]Hold me like you'll never let me [D]go
-Cause I'm [G]leaving on a jet [D]plane
-Don't know when I'll be back [G]again
-Oh [G]babe, I hate to [D]go
-{end_of_chorus}`,
+{comment: Verse 1}
+All my [G]bags are packed, I'm [C]ready to go
+I'm [G]standing here outs[C]ide your door
+[G]I hate to wake you u[C]p to say goodby[D]e
+But the [G]dawn is breaking, it's [C]early morn,
+The [G]taxi's waiting, he's [C]blowing his horn
+[G]Already I'm so l[C]onesome I could di[D]e
+
+{comment: Chorus}
+So [G]kiss me and [C]smile for me
+[G]Tell me that you'll [C]wait for me
+[G]Hold me like you'll [C]never let me go[D]
+I'm [G]leaving [C]on a jet plane
+[G]Don't know when [C]I'11 be back again
+[G]Oh b[C]abe, I hate to [D]go
+
+{comment: Verse 2}
+There's so [G]many times I've [C]let you down
+So[G] many times I've [C]played around
+[G]I tell you now [C]they don't mean a [D]thing
+Every [G]place I go I'll [C]think of you
+Every [G]song I sing I'll [C]sing for you
+When [G]I come back I'[C]ll bring your wedding [D]ring
+
+{comment: Verse 3}
+[G]Now the time has [C]come to leave you
+[G]One more time [C]let me kiss you
+Then [G]close your eyes [C]I'11 be on my w[D]ay
+[G]Dream about the [C]days to come
+When [G]I won't have to [C]leave alone
+Ab[G]out the times [C]I won't have to [D]say`,
   },
 ];
