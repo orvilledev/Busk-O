@@ -13,13 +13,26 @@ export default async function SongPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: song } = await supabase
-    .from("songs")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: song }, fav] = await Promise.all([
+    supabase.from("songs").select("*").eq("id", id).single(),
+    user
+      ? supabase
+          .from("song_favorites")
+          .select("song_id")
+          .eq("user_id", user.id)
+          .eq("song_id", id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   if (!song) notFound();
+
+  // Favorites live in a per-user table; fold the flag onto the song.
+  const songWithFav = { ...song, favorite: !!fav.data } as Song;
 
   async function handleDelete() {
     "use server";
@@ -34,7 +47,7 @@ export default async function SongPage({
       >
         <ArrowLeft className="h-4 w-4" /> Songs
       </Link>
-      <SongView song={song as Song} deleteAction={handleDelete} />
+      <SongView song={songWithFav} deleteAction={handleDelete} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { ChordColorPicker } from "./chord-color-picker";
 import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
+import { useCanEditSongs } from "@/components/role-provider";
 import { downloadSongPdf } from "@/lib/pdf-export";
 import type { Song } from "@/types/domain";
 
@@ -36,6 +37,7 @@ export function SongView({
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1);
   const [speed, setSpeed] = useState(24); // px per second
+  const canEdit = useCanEditSongs();
 
   // Auto-scroll the whole page so the performer can read hands-free. The
   // document element is the viewport scroller in this layout.
@@ -108,22 +110,26 @@ export function SongView({
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline"> PDF</span>
           </Button>
-          <Link href={`/songs/${song.id}/edit`}>
-            <Button variant="secondary" size="sm">
-              <Pencil className="h-4 w-4" />
-              <span className="hidden sm:inline"> Edit</span>
-            </Button>
-          </Link>
-          <form action={deleteAction}>
-            <Button
-              type="submit"
-              variant="ghost"
-              size="sm"
-              className="text-danger hover:bg-danger/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </form>
+          {canEdit && (
+            <>
+              <Link href={`/songs/${song.id}/edit`}>
+                <Button variant="secondary" size="sm">
+                  <Pencil className="h-4 w-4" />
+                  <span className="hidden sm:inline"> Edit</span>
+                </Button>
+              </Link>
+              <form action={deleteAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  className="text-danger hover:bg-danger/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       </div>
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { requireAdmin, requireUser } from "@/lib/supabase/server";
 
 export interface SongInput {
   title: string;
@@ -41,11 +41,8 @@ export async function createSong(formData: FormData) {
   const input = readForm(formData);
   if (!input.title) throw new Error("Title is required.");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  // Only admins/superadmin may add to the shared pool (RLS enforces this too).
+  const { supabase, user } = await requireAdmin();
 
   const { data, error } = await supabase
     .from("songs")
@@ -63,7 +60,7 @@ export async function updateSong(id: string, formData: FormData) {
   const input = readForm(formData);
   if (!input.title) throw new Error("Title is required.");
 
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from("songs").update(input).eq("id", id);
   if (error) throw new Error(error.message);
 
@@ -73,7 +70,7 @@ export async function updateSong(id: string, formData: FormData) {
 }
 
 export async function deleteSong(id: string) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from("songs").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
@@ -81,12 +78,20 @@ export async function deleteSong(id: string) {
   redirect("/songs");
 }
 
+/** Star/unstar a song for the current user (personal, not shared). */
 export async function toggleFavorite(id: string, favorite: boolean) {
-  const { supabase } = await requireUser();
-  const { error } = await supabase
-    .from("songs")
-    .update({ favorite })
-    .eq("id", id);
+  const { supabase, user } = await requireUser();
+
+  const { error } = favorite
+    ? await supabase
+        .from("song_favorites")
+        .upsert({ user_id: user.id, song_id: id }, { onConflict: "user_id,song_id" })
+    : await supabase
+        .from("song_favorites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("song_id", id);
+
   if (error) throw new Error(error.message);
 
   // Revalidate all pages that might show this song's favorite state

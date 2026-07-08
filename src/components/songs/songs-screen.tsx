@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SongLibrary } from "./song-library";
 import { useMirror } from "@/hooks/use-mirror";
 import { useSync } from "@/components/offline/sync-provider";
+import { useCanEditSongs } from "@/components/role-provider";
 import { getSongs } from "@/lib/db";
 import type { Song } from "@/types/domain";
 
@@ -19,6 +20,7 @@ async function readSongs(): Promise<Song[]> {
 export function SongsScreen() {
   const songs = useMirror(readSongs);
   const { state } = useSync();
+  const canEdit = useCanEditSongs();
 
   // First-ever visit: mirror is empty while the initial pull runs.
   const warmingUp =
@@ -28,11 +30,13 @@ export function SongsScreen() {
     <div>
       <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Songs</h1>
-        <Link href="/songs/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4" /> New song
-          </Button>
-        </Link>
+        {canEdit && (
+          <Link href="/songs/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4" /> New song
+            </Button>
+          </Link>
+        )}
       </div>
 
       {warmingUp ? (
@@ -42,13 +46,17 @@ export function SongsScreen() {
           <Music className="mb-3 h-8 w-8 text-muted" />
           <p className="font-medium">No songs yet</p>
           <p className="mb-4 mt-1 text-sm text-muted">
-            Add your first chord chart to get started.
+            {canEdit
+              ? "Add your first chord chart to get started."
+              : "Songs added by your team will appear here."}
           </p>
-          <Link href="/songs/new">
-            <Button size="sm">
-              <Plus className="h-4 w-4" /> New song
-            </Button>
-          </Link>
+          {canEdit && (
+            <Link href="/songs/new">
+              <Button size="sm">
+                <Plus className="h-4 w-4" /> New song
+              </Button>
+            </Link>
+          )}
         </div>
       ) : (
         <SongLibrary songs={songs} />

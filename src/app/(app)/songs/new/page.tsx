@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { SongEditor } from "@/components/songs/song-editor";
+import { getRole } from "@/lib/supabase/server";
+import { canEditSongs } from "@/lib/roles";
 import { createSong } from "../actions";
 
-export default function NewSongPage() {
+export default async function NewSongPage() {
+  // Only admins can add to the shared pool.
+  if (!canEditSongs(await getRole())) redirect("/songs");
+
   return (
     <div>
       <Link

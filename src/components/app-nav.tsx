@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Music, ScanLine } from "lucide-react";
+import { LogOut, Music, ScanLine, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SyncIndicator } from "@/components/offline/sync-indicator";
+import { useCanEditSongs, useCanManageRoles } from "@/components/role-provider";
 
 /**
  * Slim top bar: brand + secondary actions (Import, sync, sign out). Primary
@@ -13,6 +14,9 @@ import { SyncIndicator } from "@/components/offline/sync-indicator";
 export function AppNav() {
   const pathname = usePathname();
   const importActive = pathname.startsWith("/import");
+  const membersActive = pathname.startsWith("/members");
+  const canEdit = useCanEditSongs();
+  const canManageRoles = useCanManageRoles();
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
@@ -25,18 +29,34 @@ export function AppNav() {
         </Link>
 
         <div className="ml-auto flex items-center gap-1">
-          <Link
-            href="/import"
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
-              importActive
-                ? "bg-surface-2 text-foreground"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            <ScanLine className="h-4 w-4" />
-            <span className="hidden sm:inline">Import</span>
-          </Link>
+          {canManageRoles && (
+            <Link
+              href="/members"
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                membersActive
+                  ? "bg-surface-2 text-foreground"
+                  : "text-muted hover:text-foreground",
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Members</span>
+            </Link>
+          )}
+          {canEdit && (
+            <Link
+              href="/import"
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                importActive
+                  ? "bg-surface-2 text-foreground"
+                  : "text-muted hover:text-foreground",
+              )}
+            >
+              <ScanLine className="h-4 w-4" />
+              <span className="hidden sm:inline">Import</span>
+            </Link>
+          )}
           <SyncIndicator />
           <form action="/auth/signout" method="post">
             <button

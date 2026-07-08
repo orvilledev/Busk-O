@@ -41,18 +41,29 @@ export function mergeById<T extends Timestamped>(local: T[], remote: T[]): T[] {
 
 /** Pull the full library from Supabase into the local mirror. */
 export async function pull(supabase: SupabaseClient): Promise<void> {
-  const [songs, setlists, setlistSongs] = await Promise.all([
+  const [songs, setlists, setlistSongs, favorites] = await Promise.all([
     supabase.from("songs").select("*"),
     supabase.from("setlists").select("*"),
     supabase.from("setlist_songs").select("*"),
+    supabase.from("song_favorites").select("song_id"),
   ]);
 
   if (songs.error) throw songs.error;
   if (setlists.error) throw setlists.error;
   if (setlistSongs.error) throw setlistSongs.error;
 
+  // Favorites live in a per-user table; fold them back onto each song so the
+  // UI can keep reading `song.favorite`. Tolerate the table being absent (e.g.
+  // the roles migration hasn't run yet) so sync still works.
+  const favSet = new Set(
+    (favorites.data ?? []).map((f: { song_id: string }) => f.song_id),
+  );
+
   await replaceAll({
-    songs: (songs.data ?? []) as Song[],
+    songs: ((songs.data ?? []) as Song[]).map((s) => ({
+      ...s,
+      favorite: favSet.has(s.id),
+    })),
     setlists: (setlists.data ?? []) as Setlist[],
     setlist_songs: (setlistSongs.data ?? []) as SetlistSong[],
   });
@@ -69,9 +80,17 @@ async function applyOp(supabase: SupabaseClient, op: OutboxOp): Promise<void> {
     if (error) throw error;
     return;
   }
+  // `favorite` is a client-only derived flag — the songs table has no such
+  // column, so strip it before upserting to Supabase.
+  let row = op.row;
+  if (op.table === "songs") {
+    const copy = { ...(op.row as Song) } as Partial<Song>;
+    delete copy.favorite;
+    row = copy as unknown as typeof op.row;
+  }
   const { error } = await supabase
     .from(op.table)
-    .upsert(op.row as never, { onConflict: "id" });
+    .upsert(row as never, { onConflict: "id" });
   if (error) throw error;
 }
 
