@@ -15,6 +15,7 @@ import {
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { useAutoScroll } from "@/hooks/use-auto-scroll";
 import { ChordChart } from "./chord-chart";
+import { ChordColorPicker } from "./chord-color-picker";
 import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
@@ -155,6 +156,7 @@ export function SongView({
             A+
           </button>
         </div>
+        <ChordColorPicker />
         {scrolling && (
           <div className="flex items-center gap-1" title="Auto-scroll speed">
             <Gauge className="h-4 w-4 text-muted" />

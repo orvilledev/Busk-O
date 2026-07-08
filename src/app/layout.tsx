@@ -41,9 +41,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The pre-paint script below sets --chord on <html>; suppress the
+      // resulting SSR/client attribute mismatch (same pattern as theme scripts).
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Apply the saved chord color before paint to avoid a color flash.
+            Keep the map in sync with src/lib/chord-color.ts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var v=localStorage.getItem('busko:chord-color');var m={amber:'#f59e0b',blue:'#60a5fa',rose:'#fb7185'};if(v&&m[v])document.documentElement.style.setProperty('--chord',m[v]);}catch(e){}`,
+          }}
+        />
         {children}
         <ServiceWorkerRegister />
       </body>
