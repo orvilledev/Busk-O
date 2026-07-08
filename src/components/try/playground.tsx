@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Gauge, Maximize2, Pause, Play, RotateCcw, Type } from "lucide-react";
+import { Gauge, Pause, Play, RotateCcw, Type } from "lucide-react";
 import { DEMO_SONGS } from "@/lib/demo-songs";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { useAutoScroll } from "@/hooks/use-auto-scroll";
@@ -10,7 +10,6 @@ import { ChordColorPicker } from "@/components/songs/chord-color-picker";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
 import { cn } from "@/lib/utils";
-import { StageOverlay } from "./stage-overlay";
 
 const isKey = (k: string): k is Key => (KEYS as readonly string[]).includes(k);
 
@@ -25,7 +24,6 @@ export function Playground() {
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1);
   const [speed, setSpeed] = useState(24); // px per second
-  const [stage, setStage] = useState(false);
 
   const song = DEMO_SONGS[songIndex];
   const baseKey = song?.key ?? null;
@@ -75,10 +73,6 @@ export function Playground() {
             <span className="hidden sm:inline">
               {scrolling ? " Pause" : " Play"}
             </span>
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setStage(true)}>
-            <Maximize2 className="h-4 w-4" />
-            <span className="hidden sm:inline"> Stage view</span>
           </Button>
         </div>
       </div>
@@ -186,15 +180,6 @@ export function Playground() {
         semitones={renderSemitones}
         fontScale={fontScale}
       />
-
-      {stage && (
-        <StageOverlay
-          source={song.body}
-          semitones={renderSemitones}
-          title={song.title}
-          onClose={() => setStage(false)}
-        />
-      )}
     </div>
   );
 }
