@@ -161,16 +161,6 @@ export function Landing({ configured }: { configured: boolean }) {
               </div>
             </div>
           </div>
-
-          <span className="absolute right-1 top-6 z-20 rounded-lg border border-border bg-surface px-2.5 py-1 font-mono text-sm font-semibold text-chord shadow-lg animate-busk-float">
-            G
-          </span>
-          <span className="absolute -right-1 top-28 z-20 rounded-lg border border-border bg-surface px-2.5 py-1 font-mono text-sm font-semibold text-chord shadow-lg animate-busk-float-2">
-            Em
-          </span>
-          <span className="absolute left-3 top-2 z-20 rounded-lg border border-border bg-surface px-2.5 py-1 font-mono text-sm font-semibold text-chord shadow-lg animate-busk-bob">
-            D
-          </span>
         </div>
       </section>
 

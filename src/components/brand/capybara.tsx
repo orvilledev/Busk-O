@@ -42,7 +42,7 @@ export function CapybaraHero({ className }: { className?: string }) {
       viewBox="0 0 260 250"
       className={className}
       role="img"
-      aria-label="A calm capybara humming a tune"
+      aria-label="A calm capybara strumming an acoustic guitar"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
@@ -54,21 +54,29 @@ export function CapybaraHero({ className }: { className?: string }) {
           <stop offset="0" stopColor="#fcd34d" />
           <stop offset="1" stopColor="#c2740f" />
         </linearGradient>
+        <linearGradient id="capyGtr" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f6e2b3" />
+          <stop offset="1" stopColor="#e6c485" />
+        </linearGradient>
       </defs>
 
       {/* ground shadow (stays put while the capybara gently breathes) */}
       <ellipse cx="130" cy="233" rx="94" ry="12" fill="#000" opacity="0.28" />
 
       <g className="animate-busk-float">
-        {/* body + legs */}
+        {/* body */}
         <ellipse cx="130" cy="158" rx="92" ry="66" fill="url(#capyBody)" />
-        <rect x="94" y="196" width="26" height="42" rx="13" fill="url(#capyBody)" />
-        <rect x="140" y="196" width="26" height="42" rx="13" fill="url(#capyBody)" />
+
+        {/* little feet peeking out below the guitar */}
+        <ellipse cx="116" cy="230" rx="15" ry="12" fill="url(#capyBody)" />
+        <ellipse cx="172" cy="230" rx="15" ry="12" fill="url(#capyBody)" />
         <g stroke="#7c3d0a" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="102" y1="230" x2="102" y2="237" />
-          <line x1="112" y1="230" x2="112" y2="237" />
-          <line x1="148" y1="230" x2="148" y2="237" />
-          <line x1="158" y1="230" x2="158" y2="237" />
+          <line x1="110" y1="234" x2="110" y2="240" />
+          <line x1="116" y1="235" x2="116" y2="241" />
+          <line x1="122" y1="234" x2="122" y2="240" />
+          <line x1="166" y1="234" x2="166" y2="240" />
+          <line x1="172" y1="235" x2="172" y2="241" />
+          <line x1="178" y1="234" x2="178" y2="240" />
         </g>
 
         {/* ears (behind the head) */}
@@ -101,6 +109,68 @@ export function CapybaraHero({ className }: { className?: string }) {
           strokeWidth="3"
           strokeLinecap="round"
         />
+
+        {/* acoustic guitar, held across the lap */}
+        <g>
+          {/* headstock + tuning pegs */}
+          <ellipse
+            cx="50"
+            cy="156"
+            rx="11"
+            ry="8"
+            fill="#5b3a1a"
+            transform="rotate(16 50 156)"
+          />
+          <circle cx="44" cy="151" r="1.7" fill="#d9c39a" />
+          <circle cx="47" cy="161" r="1.7" fill="#d9c39a" />
+          {/* neck */}
+          <line
+            x1="104"
+            y1="173"
+            x2="54"
+            y2="158"
+            stroke="#6b4423"
+            strokeWidth="12"
+            strokeLinecap="round"
+          />
+          {/* frets */}
+          <g stroke="#d9c39a" strokeWidth="1.8" strokeLinecap="round">
+            <line x1="93" y1="163" x2="89" y2="175" />
+            <line x1="80" y1="160" x2="76" y2="171" />
+            <line x1="67" y1="156" x2="63" y2="168" />
+          </g>
+          {/* body (spruce top) */}
+          <circle cx="118" cy="178" r="25" fill="url(#capyGtr)" />
+          <circle cx="164" cy="188" r="33" fill="url(#capyGtr)" />
+          {/* sound hole with an amber rosette */}
+          <circle
+            cx="140"
+            cy="183"
+            r="11"
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth="2.5"
+          />
+          <circle cx="140" cy="183" r="8" fill="#2a1a06" />
+          {/* strings running up the neck */}
+          <g stroke="#efe7d0" strokeWidth="1" opacity="0.5">
+            <line x1="158" y1="199" x2="52" y2="160" />
+            <line x1="163" y1="196" x2="53" y2="156" />
+            <line x1="168" y1="193" x2="54" y2="152" />
+          </g>
+          {/* bridge */}
+          <rect x="156" y="196" width="18" height="6" rx="2" fill="#5b3a1a" />
+        </g>
+
+        {/* paws resting on the guitar */}
+        <ellipse cx="82" cy="166" rx="11" ry="9" fill="url(#capyBody)" />
+        <ellipse cx="158" cy="200" rx="12" ry="10" fill="url(#capyBody)" />
+        <g stroke="#7c3d0a" strokeWidth="2" strokeLinecap="round">
+          <line x1="77" y1="171" x2="76" y2="176" />
+          <line x1="83" y1="172" x2="82" y2="177" />
+          <line x1="153" y1="206" x2="152" y2="211" />
+          <line x1="159" y1="207" x2="158" y2="212" />
+        </g>
       </g>
 
       {/* humming a couple of notes */}
