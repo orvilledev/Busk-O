@@ -22,6 +22,7 @@ export function Tuner() {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState<NoteReading | null>(null);
+  const [inTune, setInTune] = useState(false);
 
   // Audio graph + loop handles, kept in refs so re-renders don't recreate them.
   const ctxRef = useRef<AudioContext | null>(null);
@@ -29,6 +30,24 @@ export function Tuner() {
   const rafRef = useRef<number>(0);
   const smoothFreqRef = useRef(0);
   const silentFramesRef = useRef(0);
+  const wasInTuneRef = useRef(false);
+
+  /** Short chime through the speakers the moment a string lands in tune. */
+  function playChime() {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    const t = ctx.currentTime;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.32);
+  }
 
   function stop() {
     cancelAnimationFrame(rafRef.current);
@@ -37,8 +56,10 @@ export function Tuner() {
     ctxRef.current = null;
     streamRef.current = null;
     smoothFreqRef.current = 0;
+    wasInTuneRef.current = false;
     setListening(false);
     setReading(null);
+    setInTune(false);
   }
 
   async function start() {
@@ -75,15 +96,29 @@ export function Tuner() {
 
         if (freq > 0) {
           silentFramesRef.current = 0;
-          // Exponential smoothing steadies the needle without lagging much.
+          // Heavy exponential smoothing so the needle drifts calmly toward the
+          // pitch instead of jumping every frame.
           const prev = smoothFreqRef.current;
-          const next = prev > 0 ? prev * 0.8 + freq * 0.2 : freq;
+          const next = prev > 0 ? prev * 0.9 + freq * 0.1 : freq;
           smoothFreqRef.current = next;
-          setReading(frequencyToNote(next));
+          const note = frequencyToNote(next);
+          setReading(note);
+
+          // Latch "in tune" with hysteresis (enter at ±5¢, leave past ±9¢) so
+          // it doesn't chatter — and chime once on the transition into tune.
+          const c = Math.abs(note.cents);
+          let tuned = wasInTuneRef.current;
+          if (c <= IN_TUNE) tuned = true;
+          else if (c > IN_TUNE + 4) tuned = false;
+          if (tuned && !wasInTuneRef.current) playChime();
+          wasInTuneRef.current = tuned;
+          setInTune(tuned);
         } else if (++silentFramesRef.current > 20) {
           // Clear only after sustained silence so brief gaps don't flicker.
           smoothFreqRef.current = 0;
+          wasInTuneRef.current = false;
           setReading(null);
+          setInTune(false);
         }
         rafRef.current = requestAnimationFrame(tick);
       };
@@ -103,7 +138,6 @@ export function Tuner() {
   useEffect(() => () => stop(), []);
 
   const cents = reading?.cents ?? 0;
-  const inTune = reading != null && Math.abs(cents) <= IN_TUNE;
   const target = reading ? nearestString(reading.frequency) : null;
   // Map -50..+50 cents to 0..100% across the meter.
   const needlePct = Math.max(0, Math.min(100, 50 + cents));
@@ -149,7 +183,7 @@ export function Tuner() {
           ))}
           {/* needle */}
           <div
-            className={`absolute top-1 h-12 w-1 -translate-x-1/2 rounded-full transition-[left,background-color] duration-100 ${
+            className={`absolute top-1 h-12 w-1 -translate-x-1/2 rounded-full transition-[left,background-color] duration-300 ease-out ${
               inTune ? "bg-emerald-400" : "bg-accent"
             }`}
             style={{ left: `${needlePct}%` }}

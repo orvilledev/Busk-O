@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListMusic, Music, Star } from "lucide-react";
+import { Gauge, ListMusic, Music, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/songs", label: "Songs", icon: Music },
   { href: "/setlists", label: "Setlists", icon: ListMusic },
   { href: "/favorites", label: "Favorites", icon: Star },
+  { href: "/tuner", label: "Tuner", icon: Gauge },
 ];
 
 /**
