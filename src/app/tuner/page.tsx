@@ -23,7 +23,7 @@ export default function TunerPage() {
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight">Guitar tuner</h1>
-      <p className="mb-8 text-sm text-muted">Standard tuning · E A D G B e</p>
+      <p className="mb-8 text-sm text-muted">Standard tuning · E A D G B E</p>
 
       <Tuner />
     </main>

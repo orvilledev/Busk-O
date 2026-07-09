@@ -84,7 +84,8 @@ export function Tuner() {
 
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
+      // A longer window steadies low notes (E2 ≈ 82 Hz) for YIN detection.
+      analyser.fftSize = 4096;
       source.connect(analyser);
 
       const buf = new Float32Array(analyser.fftSize);
