@@ -123,6 +123,11 @@ export function detectPitch(buf: Float32Array, sampleRate: number): number {
   return sampleRate / betterTau;
 }
 
+/** Continuous MIDI note number for a frequency (e.g. A4 = 69.0). */
+export function frequencyToMidi(freq: number): number {
+  return 69 + 12 * Math.log2(freq / A4);
+}
+
 /** Convert a frequency to its nearest note, octave, and cents offset. */
 export function frequencyToNote(freq: number): NoteReading {
   const midi = 69 + 12 * Math.log2(freq / A4);

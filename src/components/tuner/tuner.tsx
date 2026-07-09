@@ -5,6 +5,7 @@ import { Mic, MicOff } from "lucide-react";
 import {
   GUITAR_STRINGS,
   detectPitch,
+  frequencyToMidi,
   frequencyToNote,
   nearestString,
   type NoteReading,
@@ -15,6 +16,9 @@ import { Button } from "@/components/ui/button";
 const IN_TUNE = 5;
 /** Recent detections kept for majority (median) note recognition. */
 const HISTORY = 12;
+// The note track spans the open strings (E2–E4) with a little padding, in MIDI.
+const TRACK_LOW = 38;
+const TRACK_HIGH = 66;
 
 /**
  * Microphone guitar tuner. All client-side (Web Audio + YIN pitch detection),
@@ -124,15 +128,15 @@ export function Tuner() {
             const next = prev > 0 ? prev * 0.85 + avg * 0.15 : avg;
             smoothFreqRef.current = next;
 
-            const note = frequencyToNote(next);
-            setReading(note);
+            setReading(frequencyToNote(next));
 
-            // Latch "in tune" with hysteresis (enter ±5¢, leave past ±9¢) so it
-            // doesn't chatter — and chime once on the transition into tune.
-            const c = Math.abs(note.cents);
+            // "In tune" is measured against the nearest open string, so it only
+            // greens on a real string pitch. Hysteresis (enter ±5¢, leave past
+            // ±9¢) stops chatter; chime once on the transition into tune.
+            const off = Math.abs(1200 * Math.log2(next / nearestString(next).freq));
             let tuned = wasInTuneRef.current;
-            if (c <= IN_TUNE) tuned = true;
-            else if (c > IN_TUNE + 4) tuned = false;
+            if (off <= IN_TUNE) tuned = true;
+            else if (off > IN_TUNE + 4) tuned = false;
             if (tuned && !wasInTuneRef.current) playChime();
             wasInTuneRef.current = tuned;
             setInTune(tuned);
@@ -164,8 +168,10 @@ export function Tuner() {
 
   const cents = reading?.cents ?? 0;
   const target = reading ? nearestString(reading.frequency) : null;
-  // Map -50..+50 cents to 0..100% across the meter.
-  const needlePct = Math.max(0, Math.min(100, 50 + cents));
+  // Where the current pitch sits on the E2–E4 note track (0–100%).
+  const markerPct = reading ? midiToPct(frequencyToMidi(reading.frequency)) : 50;
+  // Below the target string → tighten to raise it; above → loosen.
+  const belowTarget = target ? reading!.frequency < target.freq : false;
 
   return (
     <div className="flex flex-col items-center">
@@ -193,56 +199,68 @@ export function Tuner() {
         )}
       </div>
 
-      {/* Cents meter */}
-      <div className="mt-6 w-full max-w-xs">
-        <div className="relative h-14">
-          {/* center + edge ticks */}
-          <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" />
-          <div className="absolute left-1/2 top-2 h-10 w-0.5 -translate-x-1/2 bg-foreground/40" />
-          {[10, 30, 70, 90].map((p) => (
-            <div
-              key={p}
-              className="absolute top-4 h-6 w-px bg-border"
-              style={{ left: `${p}%` }}
-            />
-          ))}
-          {/* needle */}
-          <div
-            className={`absolute top-1 h-12 w-1 -translate-x-1/2 rounded-full transition-[left,background-color] duration-[600ms] ease-out ${
-              inTune ? "bg-emerald-400" : "bg-accent"
-            }`}
-            style={{ left: `${needlePct}%` }}
-          />
-        </div>
-        <div className="mt-1 flex justify-between text-xs text-muted">
-          <span>♭ flat</span>
-          <span className={inTune ? "font-semibold text-emerald-400" : ""}>
-            {reading ? `${cents > 0 ? "+" : ""}${cents}¢` : "—"}
-          </span>
-          <span>sharp ♯</span>
-        </div>
-      </div>
+      {/* Note-position track: slide the marker from note to note until it
+          lands on your string. Left of your string → tighten; right → loosen. */}
+      <div className="mt-8 w-full max-w-sm">
+        <div className="relative h-20">
+          {/* baseline */}
+          <div className="absolute inset-x-0 top-7 h-0.5 rounded bg-border" />
 
-      {/* String targets */}
-      <div className="mt-6 flex gap-2">
-        {GUITAR_STRINGS.map((s) => {
-          const active = target?.note === s.note;
-          return (
+          {/* open-string landmarks */}
+          {GUITAR_STRINGS.map((s) => {
+            const pct = midiToPct(frequencyToMidi(s.freq));
+            const active = target?.note === s.note;
+            const tone = active
+              ? inTune
+                ? "text-emerald-400"
+                : "text-accent"
+              : "text-muted";
+            const tick = active
+              ? inTune
+                ? "bg-emerald-400"
+                : "bg-accent"
+              : "bg-border";
+            return (
+              <div
+                key={s.note}
+                className="absolute flex -translate-x-1/2 flex-col items-center"
+                style={{ left: `${pct}%`, top: "16px" }}
+              >
+                <div className={`h-6 w-0.5 ${tick}`} />
+                <span className={`mt-1.5 text-sm font-bold ${tone}`}>
+                  {s.label}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* current-pitch marker */}
+          {reading && (
             <div
-              key={s.note}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition-colors ${
-                active && inTune
-                  ? "border-emerald-400 bg-emerald-400/15 text-emerald-400"
-                  : active
-                    ? "border-accent bg-accent/15 text-accent"
-                    : "border-border text-muted"
+              className={`absolute top-0 h-14 w-1 -translate-x-1/2 rounded-full transition-[left] duration-[600ms] ease-out ${
+                inTune ? "bg-emerald-400" : "bg-accent"
               }`}
-              title={s.note}
-            >
-              {s.label}
-            </div>
-          );
-        })}
+              style={{ left: `${markerPct}%` }}
+            />
+          )}
+        </div>
+
+        {/* plain-language guidance */}
+        <p
+          className={`mt-2 text-center text-base font-semibold ${
+            inTune ? "text-emerald-400" : "text-foreground"
+          }`}
+        >
+          {!reading
+            ? listening
+              ? "Play a string"
+              : " "
+            : inTune
+              ? "In tune ✓"
+              : belowTarget
+                ? "Tighten ↑"
+                : "Loosen ↓"}
+        </p>
       </div>
 
       {/* Controls */}
@@ -271,6 +289,12 @@ export function Tuner() {
 function centsColor(inTune: boolean, cents: number): string {
   if (inTune) return "text-emerald-400";
   return Math.abs(cents) <= 15 ? "text-foreground" : "text-accent";
+}
+
+/** Position (0–100%) of a MIDI note along the E2–E4 tuning track. */
+function midiToPct(midi: number): number {
+  const pct = ((midi - TRACK_LOW) / (TRACK_HIGH - TRACK_LOW)) * 100;
+  return Math.max(0, Math.min(100, pct));
 }
 
 /** Median of a small numeric array (robust to octave/noise outliers). */

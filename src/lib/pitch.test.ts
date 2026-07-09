@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   GUITAR_STRINGS,
   detectPitch,
+  frequencyToMidi,
   frequencyToNote,
   nearestString,
 } from "./pitch";
@@ -73,6 +74,20 @@ describe("frequencyToNote", () => {
   it("reports a sharp note with positive cents", () => {
     // ~half a semitone above A4 → clearly sharp.
     expect(frequencyToNote(448).cents).toBeGreaterThan(10);
+  });
+});
+
+describe("frequencyToMidi", () => {
+  it("places A4 at 69 and A2 at 45", () => {
+    expect(frequencyToMidi(440)).toBeCloseTo(69, 5);
+    expect(frequencyToMidi(110)).toBeCloseTo(45, 5);
+  });
+
+  it("rises monotonically through the open strings", () => {
+    const midis = GUITAR_STRINGS.map((s) => frequencyToMidi(s.freq));
+    for (let i = 1; i < midis.length; i++) {
+      expect(midis[i]).toBeGreaterThan(midis[i - 1]);
+    }
   });
 });
 
