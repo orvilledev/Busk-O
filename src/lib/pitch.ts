@@ -105,8 +105,9 @@ export function detectPitch(buf: Float32Array, sampleRate: number): number {
       }
     }
     // Reject anything that isn't clearly pitched, so the tuner ignores room
-    // noise and only reacts to an actual plucked string.
-    if (best > 0.25) return -1;
+    // noise and only reacts to an actual plucked string. (Higher strings have
+    // a weaker fundamental, so this can't be too strict.)
+    if (best > 0.35) return -1;
   }
   if (tau <= 0) return -1;
 
@@ -143,6 +144,29 @@ export function nearestString(freq: number): GuitarString {
   return GUITAR_STRINGS.reduce((best, s) =>
     Math.abs(Math.log2(s.freq / freq)) < Math.abs(Math.log2(best.freq / freq))
       ? s
+      : best,
+  );
+}
+
+/**
+ * Guard against octave slips (a harmonic latching the reading an octave off).
+ * Returns the octave of `freq` nearest the pitch we're already tracking; on the
+ * first read (`reference` <= 0) it snaps to the octave nearest an open string.
+ * Because it follows the running value, it never distorts a note mid-glide.
+ */
+export function octaveCorrect(freq: number, reference: number): number {
+  const candidates = [freq / 2, freq, freq * 2];
+  if (reference > 0) {
+    return candidates.reduce((best, c) =>
+      Math.abs(Math.log2(c / reference)) < Math.abs(Math.log2(best / reference))
+        ? c
+        : best,
+    );
+  }
+  return candidates.reduce((best, c) =>
+    Math.abs(Math.log2(c / nearestString(c).freq)) <
+    Math.abs(Math.log2(best / nearestString(best).freq))
+      ? c
       : best,
   );
 }

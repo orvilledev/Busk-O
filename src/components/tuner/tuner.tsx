@@ -8,6 +8,7 @@ import {
   frequencyToMidi,
   frequencyToNote,
   nearestString,
+  octaveCorrect,
   type NoteReading,
 } from "@/lib/pitch";
 import { Button } from "@/components/ui/button";
@@ -102,10 +103,14 @@ export function Tuner() {
 
       const tick = () => {
         analyser.getFloatTimeDomainData(buf);
-        const freq = detectPitch(buf, ctx.sampleRate);
+        const raw = detectPitch(buf, ctx.sampleRate);
 
-        if (freq > 0) {
+        if (raw > 0) {
           silentFramesRef.current = 0;
+
+          // Pin the reading to the octave we're already tracking so a harmonic
+          // can't slip it an octave (why A/high-E used to miss).
+          const freq = octaveCorrect(raw, smoothFreqRef.current);
 
           // Keep a short rolling history and follow its majority. The median
           // ignores the occasional octave/noise outlier, so the note locks on

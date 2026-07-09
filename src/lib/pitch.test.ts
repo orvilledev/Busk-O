@@ -5,6 +5,7 @@ import {
   frequencyToMidi,
   frequencyToNote,
   nearestString,
+  octaveCorrect,
 } from "./pitch";
 
 const SAMPLE_RATE = 44100;
@@ -88,6 +89,26 @@ describe("frequencyToMidi", () => {
     for (let i = 1; i < midis.length; i++) {
       expect(midis[i]).toBeGreaterThan(midis[i - 1]);
     }
+  });
+});
+
+describe("octaveCorrect", () => {
+  it("pulls an octave-up harmonic back to the tracked pitch (A: 220 -> 110)", () => {
+    expect(octaveCorrect(220, 110)).toBeCloseTo(110, 5);
+  });
+
+  it("pushes an octave-down slip up to the tracked pitch (high E: 165 -> 330)", () => {
+    expect(octaveCorrect(165, 330)).toBeCloseTo(330, 5);
+  });
+
+  it("on first read, snaps to the octave nearest an open string", () => {
+    expect(octaveCorrect(220, 0)).toBeCloseTo(110, 5); // -> A2
+    expect(octaveCorrect(660, 0)).toBeCloseTo(330, 5); // -> E4
+  });
+
+  it("leaves a note between strings alone (no mid-glide jumps)", () => {
+    // ~C3 while gliding from A up to D; reference nearby → unchanged.
+    expect(octaveCorrect(131, 125)).toBeCloseTo(131, 5);
   });
 });
 
