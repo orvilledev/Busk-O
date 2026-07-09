@@ -13,10 +13,13 @@ import { Button } from "@/components/ui/button";
 
 /** How close (in cents) counts as "in tune". */
 const IN_TUNE = 5;
+/** Recent detections kept for majority (median) note recognition. */
+const HISTORY = 12;
 
 /**
- * Microphone guitar tuner. All client-side (Web Audio + autocorrelation), so it
- * works offline. Needs a user gesture + mic permission to start the audio graph.
+ * Microphone guitar tuner. All client-side (Web Audio + YIN pitch detection),
+ * so it works offline. Needs a user gesture + mic permission to start the
+ * audio graph.
  */
 export function Tuner() {
   const [listening, setListening] = useState(false);
@@ -31,6 +34,7 @@ export function Tuner() {
   const smoothFreqRef = useRef(0);
   const silentFramesRef = useRef(0);
   const wasInTuneRef = useRef(false);
+  const historyRef = useRef<number[]>([]);
 
   /** Short chime through the speakers the moment a string lands in tune. */
   function playChime() {
@@ -57,6 +61,7 @@ export function Tuner() {
     streamRef.current = null;
     smoothFreqRef.current = 0;
     wasInTuneRef.current = false;
+    historyRef.current = [];
     setListening(false);
     setReading(null);
     setInTune(false);
@@ -97,25 +102,44 @@ export function Tuner() {
 
         if (freq > 0) {
           silentFramesRef.current = 0;
-          // Heavy exponential smoothing so the needle drifts calmly toward the
-          // pitch instead of jumping every frame.
-          const prev = smoothFreqRef.current;
-          const next = prev > 0 ? prev * 0.9 + freq * 0.1 : freq;
-          smoothFreqRef.current = next;
-          const note = frequencyToNote(next);
-          setReading(note);
 
-          // Latch "in tune" with hysteresis (enter at ±5¢, leave past ±9¢) so
-          // it doesn't chatter — and chime once on the transition into tune.
-          const c = Math.abs(note.cents);
-          let tuned = wasInTuneRef.current;
-          if (c <= IN_TUNE) tuned = true;
-          else if (c > IN_TUNE + 4) tuned = false;
-          if (tuned && !wasInTuneRef.current) playChime();
-          wasInTuneRef.current = tuned;
-          setInTune(tuned);
-        } else if (++silentFramesRef.current > 20) {
-          // Clear only after sustained silence so brief gaps don't flicker.
+          // Keep a short rolling history and follow its majority. The median
+          // ignores the occasional octave/noise outlier, so the note locks on
+          // to what's actually being played instead of flickering.
+          const hist = historyRef.current;
+          hist.push(freq);
+          if (hist.length > HISTORY) hist.shift();
+
+          if (hist.length >= 5) {
+            const med = median(hist);
+            // Average only the detections in the same note-neighbourhood as the
+            // median (within ~60¢), for a clean, stable frequency.
+            const inliers = hist.filter(
+              (f) => Math.abs(1200 * Math.log2(f / med)) < 60,
+            );
+            const avg = inliers.reduce((a, b) => a + b, 0) / inliers.length;
+
+            // Extra smoothing so the needle glides slowly toward the pitch.
+            const prev = smoothFreqRef.current;
+            const next = prev > 0 ? prev * 0.85 + avg * 0.15 : avg;
+            smoothFreqRef.current = next;
+
+            const note = frequencyToNote(next);
+            setReading(note);
+
+            // Latch "in tune" with hysteresis (enter ±5¢, leave past ±9¢) so it
+            // doesn't chatter — and chime once on the transition into tune.
+            const c = Math.abs(note.cents);
+            let tuned = wasInTuneRef.current;
+            if (c <= IN_TUNE) tuned = true;
+            else if (c > IN_TUNE + 4) tuned = false;
+            if (tuned && !wasInTuneRef.current) playChime();
+            wasInTuneRef.current = tuned;
+            setInTune(tuned);
+          }
+        } else if (++silentFramesRef.current > 40) {
+          // Hold the last note through brief gaps; clear after real silence.
+          historyRef.current = [];
           smoothFreqRef.current = 0;
           wasInTuneRef.current = false;
           setReading(null);
@@ -184,7 +208,7 @@ export function Tuner() {
           ))}
           {/* needle */}
           <div
-            className={`absolute top-1 h-12 w-1 -translate-x-1/2 rounded-full transition-[left,background-color] duration-300 ease-out ${
+            className={`absolute top-1 h-12 w-1 -translate-x-1/2 rounded-full transition-[left,background-color] duration-[600ms] ease-out ${
               inTune ? "bg-emerald-400" : "bg-accent"
             }`}
             style={{ left: `${needlePct}%` }}
@@ -247,4 +271,13 @@ export function Tuner() {
 function centsColor(inTune: boolean, cents: number): string {
   if (inTune) return "text-emerald-400";
   return Math.abs(cents) <= 15 ? "text-foreground" : "text-accent";
+}
+
+/** Median of a small numeric array (robust to octave/noise outliers). */
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
 }

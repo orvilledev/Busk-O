@@ -104,7 +104,9 @@ export function detectPitch(buf: Float32Array, sampleRate: number): number {
         tau = t;
       }
     }
-    if (best > 0.6) return -1; // nothing periodic enough
+    // Reject anything that isn't clearly pitched, so the tuner ignores room
+    // noise and only reacts to an actual plucked string.
+    if (best > 0.25) return -1;
   }
   if (tau <= 0) return -1;
 
