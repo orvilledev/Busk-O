@@ -57,26 +57,48 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
   }
 
   /**
-   * Shift the chords on every line the cursor/selection touches one lyric
-   * character left or right, leaving the lyrics as they are.
+   * Shift chords one lyric character left or right, leaving the lyrics as
+   * they are. With text highlighted, only chords whose brackets touch the
+   * highlight move; with just a cursor, every chord on that line moves.
    */
   function nudgeChords(delta: -1 | 1) {
     const ta = bodyRef.current;
     if (!ta) return;
-    const lineStart = body.lastIndexOf("\n", ta.selectionStart - 1) + 1;
-    const newlineAfter = body.indexOf("\n", ta.selectionEnd);
+    const selStart = ta.selectionStart;
+    const selEnd = ta.selectionEnd;
+    const hasHighlight = selStart !== selEnd;
+    const lineStart = body.lastIndexOf("\n", selStart - 1) + 1;
+    const newlineAfter = body.indexOf("\n", selEnd);
     const lineEnd = newlineAfter === -1 ? body.length : newlineAfter;
+
+    let offset = lineStart;
     const shifted = body
       .slice(lineStart, lineEnd)
       .split("\n")
-      .map((l) => shiftLineChords(l, delta))
+      .map((line) => {
+        const start = offset;
+        offset += line.length + 1;
+        return hasHighlight
+          ? shiftLineChords(line, delta, selStart - start, selEnd - start)
+          : shiftLineChords(line, delta);
+      })
       .join("\n");
     if (shifted === body.slice(lineStart, lineEnd)) return;
-    // Re-select the affected lines (same length — the shift is a permutation)
-    // so repeated nudges keep operating on them. Applied in a layout effect:
-    // the controlled value resets the caret when React commits, so setting it
+
+    // Keep the selection on what was nudged (same length — the shift is a
+    // permutation): a highlight follows the moved chords by delta, a bare
+    // cursor re-selects the whole line. Applied in a layout effect: the
+    // controlled value resets the caret when React commits, so setting it
     // here would be overwritten.
-    pendingSelection.current = { start: lineStart, end: lineStart + shifted.length };
+    pendingSelection.current = hasHighlight
+      ? {
+          start: Math.max(
+            body.lastIndexOf("\n", selStart - 1) + 1,
+            selStart + delta,
+          ),
+          end: Math.min(lineEnd, selEnd + delta),
+        }
+      : { start: lineStart, end: lineStart + shifted.length };
     setBody(body.slice(0, lineStart) + shifted + body.slice(lineEnd));
   }
 
@@ -183,7 +205,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => nudgeChords(-1)}
-              title="Shift chords on the selected lines left (Alt+←)"
+              title="Shift the highlighted chords (or the cursor line's chords) left (Alt+←)"
             >
               <MoveLeft className="h-4 w-4" />
               <span className="sr-only">Shift chords left</span>
@@ -195,7 +217,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => nudgeChords(1)}
-              title="Shift chords on the selected lines right (Alt+→)"
+              title="Shift the highlighted chords (or the cursor line's chords) right (Alt+→)"
             >
               <MoveRight className="h-4 w-4" />
               <span className="sr-only">Shift chords right</span>

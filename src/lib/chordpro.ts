@@ -156,31 +156,53 @@ export function detectKey(body: string): string | null {
 }
 
 /**
- * Shift every [Chord] bracket on one line left or right by `delta` lyric
+ * Shift [Chord] brackets on one line left or right by `delta` lyric
  * characters without touching the lyric text — for fixing alignment after an
- * import put chords a character or two off. Chords clamp at the line edges
- * and keep their relative order; a line with no chords returns unchanged.
+ * import put chords a character or two off. `from`/`to` (character offsets in
+ * the raw line) limit the shift to chords whose brackets touch that range, so
+ * a partial selection moves only the highlighted chords; omitted, the whole
+ * line's chords move. Shifted chords clamp at the line edges; a line where
+ * nothing moves returns unchanged.
  */
-export function shiftLineChords(line: string, delta: number): string {
+export function shiftLineChords(
+  line: string,
+  delta: number,
+  from = 0,
+  to = line.length,
+): string {
   // Split into bare lyric text + chord tokens anchored to lyric positions.
-  const chords: { token: string; pos: number }[] = [];
+  const chords: { token: string; pos: number; selected: boolean }[] = [];
   let lyric = "";
   let last = 0;
   for (const m of line.matchAll(/\[[^\]]*\]/g)) {
     lyric += line.slice(last, m.index);
-    chords.push({ token: m[0], pos: lyric.length });
+    chords.push({
+      token: m[0],
+      pos: lyric.length,
+      selected: m.index < to && m.index + m[0].length > from,
+    });
     last = m.index + m[0].length;
   }
-  if (chords.length === 0) return line;
   lyric += line.slice(last);
 
-  // Re-insert right-to-left so earlier anchor positions stay valid.
-  let out = lyric;
-  for (let i = chords.length - 1; i >= 0; i--) {
-    const pos = Math.max(0, Math.min(lyric.length, chords[i].pos + delta));
-    out = out.slice(0, pos) + chords[i].token + out.slice(pos);
+  const placed = chords.map((c) => ({
+    token: c.token,
+    pos: c.selected
+      ? Math.max(0, Math.min(lyric.length, c.pos + delta))
+      : c.pos,
+  }));
+  if (placed.every((p, i) => p.pos === chords[i].pos)) return line;
+
+  // Rebuild in anchor order (stable sort keeps ties in original order, and
+  // lets a shifted chord pass an unselected one cleanly).
+  placed.sort((a, b) => a.pos - b.pos);
+  let out = "";
+  let prev = 0;
+  for (const p of placed) {
+    out += lyric.slice(prev, p.pos) + p.token;
+    prev = p.pos;
   }
-  return out;
+  return out + lyric.slice(prev);
 }
 
 /** A block of lyrics (one paragraph) with its section role. */

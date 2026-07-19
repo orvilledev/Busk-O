@@ -204,4 +204,34 @@ describe("shiftLineChords", () => {
     expect(shiftLineChords("{comment: Verse 2}", 1)).toBe("{comment: Verse 2}");
     expect(shiftLineChords("", 1)).toBe("");
   });
+
+  it("with a range, moves only the chords whose brackets touch it", () => {
+    const line = "And [Am7]if you go, [B7]you know [Em7]the tears";
+    // Range covering just [B7] (raw offsets 20-24).
+    expect(shiftLineChords(line, 1, 20, 24)).toBe(
+      "And [Am7]if you go, y[B7]ou know [Em7]the tears",
+    );
+    // Range covering [Am7] and [B7] but not [Em7].
+    expect(shiftLineChords(line, 1, 4, 24)).toBe(
+      "And i[Am7]f you go, y[B7]ou know [Em7]the tears",
+    );
+  });
+
+  it("counts a partially highlighted bracket as selected", () => {
+    // Range clips only the first char of "[C]".
+    expect(shiftLineChords("You [C]pushed me up", 1, 4, 5)).toBe(
+      "You p[C]ushed me up",
+    );
+  });
+
+  it("moves nothing when the range touches no chord", () => {
+    const line = "You [C]pushed me up";
+    expect(shiftLineChords(line, 1, 8, 14)).toBe(line);
+    expect(shiftLineChords(line, 1, 4, 4)).toBe(line); // empty range
+  });
+
+  it("lets a shifted chord pass an unselected neighbour", () => {
+    // Only [C] (offsets 0-3) selected; it hops over [G]'s anchor.
+    expect(shiftLineChords("[C][G]ab", 1, 0, 3)).toBe("[G]a[C]b");
+  });
 });
