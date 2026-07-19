@@ -77,17 +77,41 @@ export function SetlistBuilder({
     });
   }
 
-  async function add(songId: string) {
+  function add(songId: string) {
     const song = availableSongs.find((s) => s.id === songId);
     if (!song) return;
     setPicking(false);
-    // Optimistically append using the row the server returns, so the list
-    // updates instantly with no full remount/flicker.
-    const row = await addSongToSetlist(setlistId, songId);
-    setItems((prev) => [
-      ...prev,
-      { ...row, song: song as Song } as SetlistSongWithSong,
-    ]);
+
+    // Append a placeholder row immediately so the list updates on click,
+    // then swap in the real row (or roll back) once the server responds.
+    const tempId = `temp-${songId}-${Date.now()}`;
+    const tempItem = {
+      id: tempId,
+      setlist_id: setlistId,
+      song_id: songId,
+      position: items.length,
+      transpose_key: null,
+      capo: null,
+      notes: null,
+      created_at: new Date().toISOString(),
+      song: song as Song,
+    } satisfies SetlistSongWithSong;
+    setItems((prev) => [...prev, tempItem]);
+
+    startTransition(async () => {
+      try {
+        const row = await addSongToSetlist(setlistId, songId);
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === tempId
+              ? ({ ...row, song: song as Song } as SetlistSongWithSong)
+              : i,
+          ),
+        );
+      } catch {
+        setItems((prev) => prev.filter((i) => i.id !== tempId));
+      }
+    });
   }
 
   const exportData: ExportSetlist = {

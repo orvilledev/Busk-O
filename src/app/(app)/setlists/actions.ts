@@ -111,20 +111,10 @@ export async function duplicateSetlist(id: string) {
 export async function addSongToSetlist(setlistId: string, songId: string) {
   const { supabase } = await requireUser();
 
-  // Append after the current last position.
-  const { data: last } = await supabase
-    .from("setlist_songs")
-    .select("position")
-    .eq("setlist_id", setlistId)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const position = (last?.position ?? -1) + 1;
+  // Position is computed and inserted in a single round trip via RPC,
+  // instead of a client-side "read max position, then insert".
   const { data, error } = await supabase
-    .from("setlist_songs")
-    .insert({ setlist_id: setlistId, song_id: songId, position })
-    .select()
+    .rpc("add_setlist_song", { p_setlist_id: setlistId, p_song_id: songId })
     .single();
 
   if (error) throw new Error(error.message);
