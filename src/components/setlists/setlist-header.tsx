@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, Pencil, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { Setlist } from "@/types/domain";
 import {
   deleteSetlist,
@@ -66,9 +67,9 @@ export function SetlistHeader({ setlist }: { setlist: Setlist }) {
           >
             Cancel
           </Button>
-          <Button type="submit" size="sm">
+          <SubmitButton size="sm">
             <Check className="h-4 w-4" /> Save
-          </Button>
+          </SubmitButton>
         </div>
       </form>
     );
@@ -89,9 +90,9 @@ export function SetlistHeader({ setlist }: { setlist: Setlist }) {
             <Pencil className="h-4 w-4" /> Edit
           </Button>
           <form action={duplicate}>
-            <Button type="submit" variant="secondary" size="sm">
+            <SubmitButton variant="secondary" size="sm">
               <Copy className="h-4 w-4" /> Duplicate
-            </Button>
+            </SubmitButton>
           </form>
           <Button
             type="button"
@@ -101,7 +102,11 @@ export function SetlistHeader({ setlist }: { setlist: Setlist }) {
             onClick={handleDelete}
             disabled={pending}
           >
-            <Trash2 className="h-4 w-4" />
+            {pending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>

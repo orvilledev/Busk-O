@@ -35,6 +35,24 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Instant-feeling interactions: no double-tap-zoom delay on touch, no gray
+   tap flash, and a uniform press-down on every button so taps respond the
+   moment the finger lands — before any network work even starts. */
+button,
+a,
+select,
+input,
+textarea {
+  touch-action: manipulation;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
 /* Gentle idle motion for the landing hero guitar and its drifting notes. */
 @keyframes busk-float {
   0%,

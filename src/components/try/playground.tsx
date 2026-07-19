@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Gauge, Pause, Play, RotateCcw, Type } from "lucide-react";
+import { ChevronDown, Gauge, Pause, Play, RotateCcw, Type } from "lucide-react";
 import { DEMO_SONGS } from "@/lib/demo-songs";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { useAutoScroll } from "@/hooks/use-auto-scroll";
@@ -24,6 +24,7 @@ export function Playground() {
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1);
   const [speed, setSpeed] = useState(24); // px per second
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const song = DEMO_SONGS[songIndex];
   const baseKey = song?.key ?? null;
@@ -97,14 +98,35 @@ export function Playground() {
         </div>
       )}
 
-      {/* Controls */}
+      {/* Controls. On phones only transpose and chord colour show by default;
+          everything else tucks behind "More". On sm+ all controls are inline. */}
       <div className="mb-5 grid gap-3 rounded-xl border border-border bg-surface p-3 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-4">
-        <Stepper
-          label="Transpose"
-          display={semitones > 0 ? `+${semitones}` : `${semitones}`}
-          onDec={() => setSemitones((s) => s - 1)}
-          onInc={() => setSemitones((s) => s + 1)}
-        />
+        <div className="flex flex-wrap items-center gap-3 sm:contents">
+          <Stepper
+            label="Transpose"
+            display={semitones > 0 ? `+${semitones}` : `${semitones}`}
+            onDec={() => setSemitones((s) => s - 1)}
+            onInc={() => setSemitones((s) => s + 1)}
+          />
+          <ChordColorPicker />
+          <button
+            onClick={() => setMoreOpen((o) => !o)}
+            aria-expanded={moreOpen}
+            className="ml-auto flex items-center gap-1 text-muted hover:text-foreground sm:hidden"
+          >
+            More
+            <ChevronDown
+              className={cn("h-4 w-4 transition-transform", moreOpen && "rotate-180")}
+            />
+          </button>
+        </div>
+
+        <div
+          className={cn(
+            moreOpen ? "flex" : "hidden",
+            "flex-wrap items-center gap-3 sm:contents",
+          )}
+        >
         <Stepper
           label="Capo"
           display={`${capo}`}
@@ -126,7 +148,6 @@ export function Playground() {
             A+
           </button>
         </div>
-        <ChordColorPicker />
         {scrolling && (
           <div className="flex items-center gap-1" title="Auto-scroll speed">
             <Gauge className="h-4 w-4 text-muted" />
@@ -172,6 +193,7 @@ export function Playground() {
               </>
             )
           ) : null}
+        </div>
         </div>
       </div>
 

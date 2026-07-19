@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Calendar, ListMusic, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMirror } from "@/hooks/use-mirror";
 import { useSync } from "@/components/offline/sync-provider";
@@ -61,9 +61,9 @@ export function SetlistsScreen() {
           type="date"
           className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <Button type="submit" className="w-full sm:w-auto">
+        <SubmitButton className="w-full sm:w-auto">
           <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New setlist</span>
-        </Button>
+        </SubmitButton>
       </form>
 
       {warmingUp ? (

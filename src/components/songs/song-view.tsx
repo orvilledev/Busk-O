@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  ChevronDown,
   Pencil,
   Trash2,
   Type,
@@ -12,12 +13,14 @@ import {
   Pause,
   Gauge,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
 import { useAutoScroll } from "@/hooks/use-auto-scroll";
 import { ChordChart } from "./chord-chart";
 import { ChordColorPicker } from "./chord-color-picker";
 import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Stepper } from "@/components/ui/stepper";
 import { useCanEditSongs } from "@/components/role-provider";
 import { downloadSongPdf } from "@/lib/pdf-export";
@@ -37,6 +40,7 @@ export function SongView({
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1);
   const [speed, setSpeed] = useState(24); // px per second
+  const [moreOpen, setMoreOpen] = useState(false);
   const canEdit = useCanEditSongs();
 
   // Auto-scroll the whole page so the performer can read hands-free. The
@@ -119,96 +123,116 @@ export function SongView({
                 </Button>
               </Link>
               <form action={deleteAction}>
-                <Button
-                  type="submit"
+                <SubmitButton
                   variant="ghost"
                   size="sm"
                   className="text-danger hover:bg-danger/10"
                 >
                   <Trash2 className="h-4 w-4" />
-                </Button>
+                </SubmitButton>
               </form>
             </>
           )}
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Controls. On phones only transpose and chord colour show by default;
+          everything else tucks behind "More". On sm+ all controls are inline. */}
       <div className="mb-5 grid gap-3 rounded-xl border border-border bg-surface p-3 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-4">
-        <Stepper
-          label="Transpose"
-          display={semitones > 0 ? `+${semitones}` : `${semitones}`}
-          onDec={() => setSemitones((s) => s - 1)}
-          onInc={() => setSemitones((s) => s + 1)}
-        />
-        <Stepper
-          label="Capo"
-          display={`${capo}`}
-          onDec={() => setCapo((c) => Math.max(0, c - 1))}
-          onInc={() => setCapo((c) => Math.min(11, c + 1))}
-        />
-        <div className="flex items-center gap-1">
-          <Type className="h-4 w-4 text-muted" />
+        <div className="flex flex-wrap items-center gap-3 sm:contents">
+          <Stepper
+            label="Transpose"
+            display={semitones > 0 ? `+${semitones}` : `${semitones}`}
+            onDec={() => setSemitones((s) => s - 1)}
+            onInc={() => setSemitones((s) => s + 1)}
+          />
+          <ChordColorPicker />
           <button
-            className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
-            onClick={() => setFontScale((f) => Math.max(0.7, +(f - 0.1).toFixed(1)))}
+            onClick={() => setMoreOpen((o) => !o)}
+            aria-expanded={moreOpen}
+            className="ml-auto flex items-center gap-1 text-muted hover:text-foreground sm:hidden"
           >
-            A−
-          </button>
-          <button
-            className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
-            onClick={() => setFontScale((f) => Math.min(2.5, +(f + 0.1).toFixed(1)))}
-          >
-            A+
+            More
+            <ChevronDown
+              className={cn("h-4 w-4 transition-transform", moreOpen && "rotate-180")}
+            />
           </button>
         </div>
-        <ChordColorPicker />
-        {scrolling && (
-          <div className="flex items-center gap-1" title="Auto-scroll speed">
-            <Gauge className="h-4 w-4 text-muted" />
+
+        <div
+          className={cn(
+            moreOpen ? "flex" : "hidden",
+            "flex-wrap items-center gap-3 sm:contents",
+          )}
+        >
+          <Stepper
+            label="Capo"
+            display={`${capo}`}
+            onDec={() => setCapo((c) => Math.max(0, c - 1))}
+            onInc={() => setCapo((c) => Math.min(11, c + 1))}
+          />
+          <div className="flex items-center gap-1">
+            <Type className="h-4 w-4 text-muted" />
             <button
               className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
-              onClick={() => setSpeed((s) => Math.max(6, s - 6))}
+              onClick={() => setFontScale((f) => Math.max(0.7, +(f - 0.1).toFixed(1)))}
             >
-              −
+              A−
             </button>
-            <span className="w-6 text-center font-mono text-xs">{speed}</span>
             <button
               className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
-              onClick={() => setSpeed((s) => Math.min(120, s + 6))}
+              onClick={() => setFontScale((f) => Math.min(2.5, +(f + 0.1).toFixed(1)))}
             >
-              +
+              A+
             </button>
           </div>
-        )}
-        {(semitones !== 0 || capo !== 0) && (
-          <button
-            onClick={reset}
-            className="flex items-center gap-1 text-muted hover:text-foreground sm:ml-auto"
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset
-          </button>
-        )}
-        <div className="text-xs text-muted sm:ml-auto sm:text-sm">
-          {shapeKey ? (
-            capo > 0 ? (
-              <>
-                Capo {capo} · play in{" "}
-                <span className="font-semibold text-foreground">{shapeKey}</span>{" "}
-                · sounds{" "}
-                <span className="font-semibold text-foreground">
-                  {soundingKey}
-                </span>
-              </>
-            ) : (
-              <>
-                Key{" "}
-                <span className="font-semibold text-foreground">
-                  {soundingKey}
-                </span>
-              </>
-            )
-          ) : null}
+          {scrolling && (
+            <div className="flex items-center gap-1" title="Auto-scroll speed">
+              <Gauge className="h-4 w-4 text-muted" />
+              <button
+                className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
+                onClick={() => setSpeed((s) => Math.max(6, s - 6))}
+              >
+                −
+              </button>
+              <span className="w-6 text-center font-mono text-xs">{speed}</span>
+              <button
+                className="rounded-md border border-border px-2 py-0.5 hover:bg-surface-2"
+                onClick={() => setSpeed((s) => Math.min(120, s + 6))}
+              >
+                +
+              </button>
+            </div>
+          )}
+          {(semitones !== 0 || capo !== 0) && (
+            <button
+              onClick={reset}
+              className="flex items-center gap-1 text-muted hover:text-foreground sm:ml-auto"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Reset
+            </button>
+          )}
+          <div className="text-xs text-muted sm:ml-auto sm:text-sm">
+            {shapeKey ? (
+              capo > 0 ? (
+                <>
+                  Capo {capo} · play in{" "}
+                  <span className="font-semibold text-foreground">{shapeKey}</span>{" "}
+                  · sounds{" "}
+                  <span className="font-semibold text-foreground">
+                    {soundingKey}
+                  </span>
+                </>
+              ) : (
+                <>
+                  Key{" "}
+                  <span className="font-semibold text-foreground">
+                    {soundingKey}
+                  </span>
+                </>
+              )
+            ) : null}
+          </div>
         </div>
       </div>
 
