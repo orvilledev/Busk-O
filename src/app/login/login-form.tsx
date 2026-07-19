@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,18 @@ type Mode = "password" | "magic";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>("password");
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "auth"
+      ? "That confirmation link is invalid or expired. Please sign up again or request a new link."
+      : null
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +42,11 @@ export function LoginForm() {
       }
 
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        });
         if (error) throw error;
         setMessage("Account created. Check your email to confirm, then log in.");
         return;

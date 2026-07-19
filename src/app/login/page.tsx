@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Music } from "lucide-react";
 import { LoginForm } from "./login-form";
 
@@ -14,7 +15,9 @@ export default function LoginPage() {
             Chords, lyrics &amp; setlists for the stage.
           </p>
         </div>
-        <LoginForm />
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
   );
