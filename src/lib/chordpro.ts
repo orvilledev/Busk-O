@@ -156,6 +156,20 @@ export function detectKey(body: string): string | null {
 }
 
 /**
+ * Whether `offset` (a caret position in the raw line) falls strictly inside
+ * a [Chord] bracket — the caret is "on" that chord rather than at its
+ * boundary or in the lyric text. Passing the offset as a collapsed
+ * `from`/`to` range to shiftLineChords then moves exactly that chord.
+ */
+export function insideChordBracket(line: string, offset: number): boolean {
+  for (const m of line.matchAll(/\[[^\]]*\]/g)) {
+    if (m.index >= offset) return false;
+    if (m.index + m[0].length > offset) return true;
+  }
+  return false;
+}
+
+/**
  * Shift [Chord] brackets on one line left or right by `delta` lyric
  * characters without touching the lyric text — for fixing alignment after an
  * import put chords a character or two off. `from`/`to` (character offsets in

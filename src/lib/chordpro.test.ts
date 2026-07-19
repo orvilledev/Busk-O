@@ -11,6 +11,7 @@ import {
   toLyricSections,
   toPlainLyrics,
   detectKey,
+  insideChordBracket,
   shiftLineChords,
 } from "./chordpro";
 
@@ -233,5 +234,33 @@ describe("shiftLineChords", () => {
   it("lets a shifted chord pass an unselected neighbour", () => {
     // Only [C] (offsets 0-3) selected; it hops over [G]'s anchor.
     expect(shiftLineChords("[C][G]ab", 1, 0, 3)).toBe("[G]a[C]b");
+  });
+
+  it("a collapsed range inside a bracket moves exactly that chord", () => {
+    const line = "And [Am7]if you go, [B7]you know [Em7]the tears";
+    // Caret inside [B7] (raw offsets 20-24).
+    expect(shiftLineChords(line, 1, 22, 22)).toBe(
+      "And [Am7]if you go, y[B7]ou know [Em7]the tears",
+    );
+    // Caret at a bracket boundary is not "inside" — nothing moves.
+    expect(shiftLineChords(line, 1, 20, 20)).toBe(line);
+    expect(shiftLineChords(line, 1, 24, 24)).toBe(line);
+  });
+});
+
+describe("insideChordBracket", () => {
+  const line = "You [C]pushed me up";
+
+  it("is true for any caret between the brackets", () => {
+    expect(insideChordBracket(line, 5)).toBe(true); // after [
+    expect(insideChordBracket(line, 6)).toBe(true); // after C
+  });
+
+  it("is false at the bracket boundaries and in lyrics", () => {
+    expect(insideChordBracket(line, 4)).toBe(false); // before [
+    expect(insideChordBracket(line, 7)).toBe(false); // after ]
+    expect(insideChordBracket(line, 0)).toBe(false);
+    expect(insideChordBracket(line, 10)).toBe(false);
+    expect(insideChordBracket("no chords here", 3)).toBe(false);
   });
 });

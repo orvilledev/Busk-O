@@ -2,7 +2,12 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, MoveLeft, MoveRight, Wand2 } from "lucide-react";
-import { chordsOverWordsToChordPro, KEYS, shiftLineChords } from "@/lib/chordpro";
+import {
+  chordsOverWordsToChordPro,
+  insideChordBracket,
+  KEYS,
+  shiftLineChords,
+} from "@/lib/chordpro";
 import { useOcrPaste } from "@/hooks/use-ocr-paste";
 import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
@@ -59,7 +64,8 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
   /**
    * Shift chords one lyric character left or right, leaving the lyrics as
    * they are. With text highlighted, only chords whose brackets touch the
-   * highlight move; with just a cursor, every chord on that line moves.
+   * highlight move; a bare cursor inside a [Chord] moves just that chord;
+   * a bare cursor in lyric text moves every chord on that line.
    */
   function nudgeChords(delta: -1 | 1) {
     const ta = bodyRef.current;
@@ -72,24 +78,33 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
     const lineEnd = newlineAfter === -1 ? body.length : newlineAfter;
 
     let offset = lineStart;
+    let caretOnChord = false;
     const shifted = body
       .slice(lineStart, lineEnd)
       .split("\n")
       .map((line) => {
         const start = offset;
         offset += line.length + 1;
-        return hasHighlight
-          ? shiftLineChords(line, delta, selStart - start, selEnd - start)
+        if (hasHighlight) {
+          return shiftLineChords(line, delta, selStart - start, selEnd - start);
+        }
+        // Bare cursor (always a single line): inside a bracket grabs that
+        // chord alone — a collapsed range selects exactly the chord that
+        // strictly contains it.
+        const caret = selStart - start;
+        caretOnChord = insideChordBracket(line, caret);
+        return caretOnChord
+          ? shiftLineChords(line, delta, caret, caret)
           : shiftLineChords(line, delta);
       })
       .join("\n");
     if (shifted === body.slice(lineStart, lineEnd)) return;
 
     // Keep the selection on what was nudged (same length — the shift is a
-    // permutation): a highlight follows the moved chords by delta, a bare
-    // cursor re-selects the whole line. Applied in a layout effect: the
-    // controlled value resets the caret when React commits, so setting it
-    // here would be overwritten.
+    // permutation): a highlight or an in-chord caret follows the moved
+    // chords by delta, a bare cursor in lyrics re-selects the whole line.
+    // Applied in a layout effect: the controlled value resets the caret when
+    // React commits, so setting it here would be overwritten.
     pendingSelection.current = hasHighlight
       ? {
           start: Math.max(
@@ -98,7 +113,9 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
           ),
           end: Math.min(lineEnd, selEnd + delta),
         }
-      : { start: lineStart, end: lineStart + shifted.length };
+      : caretOnChord
+        ? { start: selStart + delta, end: selStart + delta }
+        : { start: lineStart, end: lineStart + shifted.length };
     setBody(body.slice(0, lineStart) + shifted + body.slice(lineEnd));
   }
 
@@ -205,7 +222,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => nudgeChords(-1)}
-              title="Shift the highlighted chords (or the cursor line's chords) left (Alt+←)"
+              title="Nudge left: highlighted chords, the chord at the cursor, or the whole line (Alt+←)"
             >
               <MoveLeft className="h-4 w-4" />
               <span className="sr-only">Shift chords left</span>
@@ -217,7 +234,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => nudgeChords(1)}
-              title="Shift the highlighted chords (or the cursor line's chords) right (Alt+→)"
+              title="Nudge right: highlighted chords, the chord at the cursor, or the whole line (Alt+→)"
             >
               <MoveRight className="h-4 w-4" />
               <span className="sr-only">Shift chords right</span>
