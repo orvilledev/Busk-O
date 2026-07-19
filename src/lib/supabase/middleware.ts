@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseConfigured } from "./config";
 
@@ -40,6 +41,7 @@ export async function updateSession(request: NextRequest) {
   // users out at random by desyncing cookie refresh.
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
@@ -47,7 +49,16 @@ export async function updateSession(request: NextRequest) {
   const isPublic =
     pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
-  if (!user && !isPublic) {
+  // Right after a deploy (or on a flaky connection) the auth check itself can
+  // fail — network error or auth-server 5xx — while the session cookies are
+  // still valid. That is "couldn't verify", not "signed out": let the request
+  // through and let a later request re-verify, instead of bouncing a
+  // logged-in user to /login.
+  const authUnavailable =
+    error != null &&
+    (isAuthRetryableFetchError(error) || (error.status ?? 0) >= 500);
+
+  if (!user && !isPublic && !authUnavailable) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
