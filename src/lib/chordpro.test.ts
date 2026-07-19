@@ -11,6 +11,7 @@ import {
   toLyricSections,
   toPlainLyrics,
   detectKey,
+  shiftLineChords,
 } from "./chordpro";
 
 const AMAZING_GRACE = `{title: Amazing Grace}
@@ -165,5 +166,42 @@ describe("key math", () => {
   it("computes capo fret to reach a sounding key", () => {
     expect(capoFret("G", "A")).toBe(2); // G shapes + capo 2 = A
     expect(capoFret("C", "C")).toBe(0);
+  });
+});
+
+describe("shiftLineChords", () => {
+  it("moves every chord one lyric character right", () => {
+    expect(shiftLineChords("You [C]pushed me up", 1)).toBe("You p[C]ushed me up");
+  });
+
+  it("moves every chord one lyric character left", () => {
+    expect(shiftLineChords("You p[C]ushed me up", -1)).toBe("You [C]pushed me up");
+  });
+
+  it("never changes the lyric text", () => {
+    const line = "And [Am7]if you go, [B7]you know [Em7]the tears";
+    const stripped = (s: string) => s.replace(/\[[^\]]*\]/g, "");
+    expect(stripped(shiftLineChords(line, 1))).toBe(stripped(line));
+    expect(stripped(shiftLineChords(line, -1))).toBe(stripped(line));
+  });
+
+  it("round-trips: right then left restores the line", () => {
+    const line = "And [F]suddenly [G]the madness[G7] starts";
+    expect(shiftLineChords(shiftLineChords(line, 1), -1)).toBe(line);
+  });
+
+  it("clamps at the line edges", () => {
+    expect(shiftLineChords("[C]You pushed", -1)).toBe("[C]You pushed");
+    expect(shiftLineChords("You pushed[C]", 1)).toBe("You pushed[C]");
+  });
+
+  it("keeps chord order when chords share an anchor", () => {
+    expect(shiftLineChords("[C][G]ab", 1)).toBe("a[C][G]b");
+  });
+
+  it("leaves chord-free and directive lines alone", () => {
+    expect(shiftLineChords("just some words", 1)).toBe("just some words");
+    expect(shiftLineChords("{comment: Verse 2}", 1)).toBe("{comment: Verse 2}");
+    expect(shiftLineChords("", 1)).toBe("");
   });
 });

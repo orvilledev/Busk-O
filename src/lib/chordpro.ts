@@ -155,6 +155,34 @@ export function detectKey(body: string): string | null {
   return FLAT_TO_SHARP[first[1]] ?? first[1];
 }
 
+/**
+ * Shift every [Chord] bracket on one line left or right by `delta` lyric
+ * characters without touching the lyric text — for fixing alignment after an
+ * import put chords a character or two off. Chords clamp at the line edges
+ * and keep their relative order; a line with no chords returns unchanged.
+ */
+export function shiftLineChords(line: string, delta: number): string {
+  // Split into bare lyric text + chord tokens anchored to lyric positions.
+  const chords: { token: string; pos: number }[] = [];
+  let lyric = "";
+  let last = 0;
+  for (const m of line.matchAll(/\[[^\]]*\]/g)) {
+    lyric += line.slice(last, m.index);
+    chords.push({ token: m[0], pos: lyric.length });
+    last = m.index + m[0].length;
+  }
+  if (chords.length === 0) return line;
+  lyric += line.slice(last);
+
+  // Re-insert right-to-left so earlier anchor positions stay valid.
+  let out = lyric;
+  for (let i = chords.length - 1; i >= 0; i--) {
+    const pos = Math.max(0, Math.min(lyric.length, chords[i].pos + delta));
+    out = out.slice(0, pos) + chords[i].token + out.slice(pos);
+  }
+  return out;
+}
+
 /** A block of lyrics (one paragraph) with its section role. */
 export interface LyricSection {
   isChorus: boolean;

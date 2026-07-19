@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Loader2, Wand2 } from "lucide-react";
-import { chordsOverWordsToChordPro, KEYS } from "@/lib/chordpro";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ImagePlus, Loader2, MoveLeft, MoveRight, Wand2 } from "lucide-react";
+import { chordsOverWordsToChordPro, KEYS, shiftLineChords } from "@/lib/chordpro";
 import { useOcrPaste } from "@/hooks/use-ocr-paste";
 import { ChordChart } from "./chord-chart";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
   const [body, setBody] = useState(initial.body ?? "");
   const [submitting, setSubmitting] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const pendingSelection = useRef<{ start: number; end: number } | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewHeight, setPreviewHeight] = useState<number>();
   const { ocr, handlePaste } = useOcrPaste(body, setBody, bodyRef);
@@ -54,6 +55,38 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
     // ChordPro. Handy right after pasting a chart off the web.
     setBody(chordsOverWordsToChordPro(body));
   }
+
+  /**
+   * Shift the chords on every line the cursor/selection touches one lyric
+   * character left or right, leaving the lyrics as they are.
+   */
+  function nudgeChords(delta: -1 | 1) {
+    const ta = bodyRef.current;
+    if (!ta) return;
+    const lineStart = body.lastIndexOf("\n", ta.selectionStart - 1) + 1;
+    const newlineAfter = body.indexOf("\n", ta.selectionEnd);
+    const lineEnd = newlineAfter === -1 ? body.length : newlineAfter;
+    const shifted = body
+      .slice(lineStart, lineEnd)
+      .split("\n")
+      .map((l) => shiftLineChords(l, delta))
+      .join("\n");
+    if (shifted === body.slice(lineStart, lineEnd)) return;
+    // Re-select the affected lines (same length — the shift is a permutation)
+    // so repeated nudges keep operating on them. Applied in a layout effect:
+    // the controlled value resets the caret when React commits, so setting it
+    // here would be overwritten.
+    pendingSelection.current = { start: lineStart, end: lineStart + shifted.length };
+    setBody(body.slice(0, lineStart) + shifted + body.slice(lineEnd));
+  }
+
+  useLayoutEffect(() => {
+    const ta = bodyRef.current;
+    if (!pendingSelection.current || !ta) return;
+    ta.focus();
+    ta.setSelectionRange(pendingSelection.current.start, pendingSelection.current.end);
+    pendingSelection.current = null;
+  }, [body]);
 
   return (
     <form
@@ -143,15 +176,40 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               — or paste a screenshot to read it in
             </span>
           </label>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleConvert}
-            title="Convert pasted chords-over-lyrics into ChordPro"
-          >
-            <Wand2 className="h-4 w-4" /> Convert paste
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => nudgeChords(-1)}
+              title="Shift chords on the selected lines left (Alt+←)"
+            >
+              <MoveLeft className="h-4 w-4" />
+              <span className="sr-only">Shift chords left</span>
+            </Button>
+            <span className="text-xs text-muted">Nudge chords</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => nudgeChords(1)}
+              title="Shift chords on the selected lines right (Alt+→)"
+            >
+              <MoveRight className="h-4 w-4" />
+              <span className="sr-only">Shift chords right</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleConvert}
+              title="Convert pasted chords-over-lyrics into ChordPro"
+            >
+              <Wand2 className="h-4 w-4" /> Convert paste
+            </Button>
+          </div>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
           <div
@@ -165,6 +223,17 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onPaste={handlePaste}
+              onKeyDown={(e) => {
+                if (
+                  e.altKey &&
+                  !e.ctrlKey &&
+                  !e.metaKey &&
+                  (e.key === "ArrowLeft" || e.key === "ArrowRight")
+                ) {
+                  e.preventDefault();
+                  nudgeChords(e.key === "ArrowLeft" ? -1 : 1);
+                }
+              }}
               spellCheck={false}
               className={`${field} h-full min-h-80 w-full font-mono`}
               placeholder={
