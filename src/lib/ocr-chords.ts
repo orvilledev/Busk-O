@@ -86,16 +86,34 @@ export function splitMergedChords(t: string): string[] | null {
 }
 
 /**
+ * OCR guesses letter case from glyph size, so shape-identical letters come
+ * back lowercase: "c/B" → C/B, "C/b" → C/B, "cmaj7" → Cmaj7. Recase the root
+ * and slash bass, but only for tokens with chord structure (slash, digit, or
+ * quality suffix) so lyric words like "am" or "be" never become chords.
+ */
+function fixChordCase(t: string): string {
+  if (!/[/\d]/.test(t) && !/maj|min|dim|aug|sus|add/i.test(t)) return t;
+  return t
+    .replace(/^[a-g]/, (c) => c.toUpperCase())
+    .replace(/\/([a-g])([#b]?)$/, (_, n: string, acc: string) => "/" + n.toUpperCase() + acc);
+}
+
+/**
  * Read a token as one or more chords, repairing common OCR damage:
  * - doubled root letter: "Cc" → C
+ * - case slips: "c/B" → C/B
  * - merged neighbours: "GF" → G F
  * Returns null when the token isn't chord-like at all.
  */
 export function readChords(t: string): string[] | null {
-  if (isChord(t)) return [t];
-  const dedoubled = t.replace(/^([A-G])\1/i, "$1");
-  if (dedoubled !== t && isChord(dedoubled)) return [dedoubled];
-  return splitMergedChords(t);
+  const recased = fixChordCase(t);
+  const candidates = recased === t ? [t] : [t, recased];
+  for (const cand of candidates) {
+    if (isChord(cand)) return [cand];
+    const dedoubled = cand.replace(/^([A-G])\1/i, "$1");
+    if (dedoubled !== cand && isChord(dedoubled)) return [dedoubled];
+  }
+  return splitMergedChords(t) ?? (recased !== t ? splitMergedChords(recased) : null);
 }
 
 /**
@@ -113,8 +131,12 @@ export function fixLyricOcr(word: string): string {
   // Fix capital I: lone "1" or "1" before uppercase/apostrophe (not lowercase)
   if (/^1[^\w'#/]*$/.test(word)) return "I" + word.slice(1);
   if (/^1[A-Z']/.test(word) && !/^1(?:st|nd|rd|th)\b/i.test(word)) {
-    return "I" + word.slice(1);
+    word = "I" + word.slice(1);
   }
+
+  // Contractions: "I'11" / "we'11" → "I'll" / "we'll". Requires a letter
+  // before the apostrophe so a bare year like "'11" survives.
+  word = word.replace(/([A-Za-z]')11(?=$|[^\d])/g, "$1ll");
 
   // Fix lowercase l: "1" between letters or word-initial "1" in words with 2+ letters
   // But skip ordinals like "1st", "1nd", "1rd", "1th"

@@ -54,6 +54,29 @@ describe("readChords (OCR chord repair)", () => {
       expect(readChords(word), word).toBeNull();
     }
   });
+
+  it("repairs a lowercase root or bass in slash chords", () => {
+    expect(readChords("c/B")).toEqual(["C/B"]);
+    expect(readChords("C/b")).toEqual(["C/B"]);
+    expect(readChords("c/b")).toEqual(["C/B"]);
+    expect(readChords("d/f#")).toEqual(["D/F#"]);
+  });
+
+  it("repairs lowercase roots on chords with structure", () => {
+    expect(readChords("cmaj7")).toEqual(["Cmaj7"]);
+    expect(readChords("dsus2/A")).toEqual(["Dsus2/A"]);
+    expect(readChords("e7")).toEqual(["E7"]);
+  });
+
+  it("repairs a doubled root combined with a case slip", () => {
+    expect(readChords("cc/B")).toEqual(["C/B"]);
+  });
+
+  it("never recases bare lyric words into chords", () => {
+    for (const word of ["am", "a", "be", "do", "go", "and", "dim", "add"]) {
+      expect(readChords(word), word).toBeNull();
+    }
+  });
 });
 
 describe("clusterRows", () => {
@@ -153,6 +176,14 @@ describe("fixLyricOcr (I and l misread as 1)", () => {
     expect(fixLyricOcr("b1essed")).toBe("blessed");
   });
 
+  it("fixes ll misread as 11 in contractions", () => {
+    expect(fixLyricOcr("I'11")).toBe("I'll");
+    expect(fixLyricOcr("1'11")).toBe("I'll");
+    expect(fixLyricOcr("we'11")).toBe("we'll");
+    expect(fixLyricOcr("You'11")).toBe("You'll");
+    expect(fixLyricOcr("I'11,")).toBe("I'll,");
+  });
+
   it("leaves real numbers and ordinals alone", () => {
     expect(fixLyricOcr("10")).toBe("10");
     expect(fixLyricOcr("1999")).toBe("1999");
@@ -242,6 +273,36 @@ describe("damaged chord rows (regression: rendered as lyrics)", () => {
     expect(out).toContain("[FM7]");
     expect(out).toContain("[Ab]");
     expect(out).toContain("[G7]");
+  });
+
+  it("keeps a chord line with a lowercase slash chord over its lyric", () => {
+    // "Cc c/B" over "Well I just heard the news today" — OCR doubled the
+    // first C and lowercased the second, so the row used to fall below the
+    // chord threshold and render as a lyric line.
+    const chords = [w("Cc", 30, 20), w("c/B", 200, 20)];
+    const lyric = [
+      w("Well", 10, 46),
+      w("I", 60, 46),
+      w("just", 80, 46),
+      w("heard", 130, 46),
+      w("the", 195, 46),
+      w("news", 235, 46),
+      w("today", 290, 46),
+    ];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toContain("[C]");
+    expect(out).toContain("[C/B]");
+    expect(out).not.toContain("Cc");
+    expect(out).not.toContain("c/B");
+  });
+
+  it("fixes I'11 in a lyric under a chord line", () => {
+    // "Dsus2/A" over "I'11 show you everything"
+    const chords = [w("Dsus2/A", 60, 20)];
+    const lyric = [w("I'11", 10, 46), w("show", 60, 46), w("you", 115, 46), w("everything", 160, 46)];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toContain("I'll");
+    expect(out).toContain("[Dsus2/A]");
   });
 
   it("splits merged chords on a line over lyrics", () => {
