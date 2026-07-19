@@ -376,14 +376,19 @@ function SongPicker({
               <li key={s.id}>
                 <button
                   onClick={() => onPick(s.id)}
-                  className="flex w-full flex-col items-start px-4 py-2.5 text-left hover:bg-surface-2"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-surface-2"
                 >
-                  <span className="break-words font-medium">{s.title}</span>
-                  {s.artist && (
-                    <span className="break-words text-sm text-muted">
-                      {s.artist}
-                    </span>
-                  )}
+                  <span className="flex min-w-0 flex-col">
+                    <span className="break-words font-medium">{s.title}</span>
+                    {s.artist && (
+                      <span className="break-words text-sm text-muted">
+                        {s.artist}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
+                    <Plus className="h-3.5 w-3.5" /> Add
+                  </span>
                 </button>
               </li>
             ))
