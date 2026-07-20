@@ -127,6 +127,38 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
     pendingSelection.current = null;
   }, [body]);
 
+  /**
+   * Alt+←/→ always nudges. Shift+←/→ nudges only when the caret sits inside
+   * a [Chord] bracket — anywhere else it keeps its native extend-selection
+   * behavior, which the highlight-to-nudge flow depends on.
+   */
+  function handleBodyKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    const delta = e.key === "ArrowLeft" ? -1 : 1;
+
+    if (e.altKey) {
+      e.preventDefault();
+      nudgeChords(delta);
+      return;
+    }
+
+    if (e.shiftKey) {
+      const ta = e.currentTarget;
+      if (ta.selectionStart !== ta.selectionEnd) return; // extending a selection
+      const lineStart = body.lastIndexOf("\n", ta.selectionStart - 1) + 1;
+      const newlineAfter = body.indexOf("\n", ta.selectionStart);
+      const line = body.slice(
+        lineStart,
+        newlineAfter === -1 ? body.length : newlineAfter,
+      );
+      if (insideChordBracket(line, ta.selectionStart - lineStart)) {
+        e.preventDefault();
+        nudgeChords(delta);
+      }
+    }
+  }
+
   return (
     <form
       action={action}
@@ -222,7 +254,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => nudgeChords(-1)}
-              title="Nudge left: highlighted chords, the chord at the cursor, or the whole line (Alt+←)"
+              title="Nudge left: highlighted chords, the chord at the cursor (Shift+← or Alt+←), or the whole line (Alt+←)"
             >
               <MoveLeft className="h-4 w-4" />
               <span className="sr-only">Shift chords left</span>
@@ -234,7 +266,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => nudgeChords(1)}
-              title="Nudge right: highlighted chords, the chord at the cursor, or the whole line (Alt+→)"
+              title="Nudge right: highlighted chords, the chord at the cursor (Shift+→ or Alt+→), or the whole line (Alt+→)"
             >
               <MoveRight className="h-4 w-4" />
               <span className="sr-only">Shift chords right</span>
@@ -262,17 +294,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onPaste={handlePaste}
-              onKeyDown={(e) => {
-                if (
-                  e.altKey &&
-                  !e.ctrlKey &&
-                  !e.metaKey &&
-                  (e.key === "ArrowLeft" || e.key === "ArrowRight")
-                ) {
-                  e.preventDefault();
-                  nudgeChords(e.key === "ArrowLeft" ? -1 : 1);
-                }
-              }}
+              onKeyDown={handleBodyKeyDown}
               spellCheck={false}
               className={`${field} h-full min-h-80 w-full font-mono`}
               placeholder={
