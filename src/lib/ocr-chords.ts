@@ -98,14 +98,7 @@ function fixChordCase(t: string): string {
     .replace(/\/([a-g])([#b]?)$/, (_, n: string, acc: string) => "/" + n.toUpperCase() + acc);
 }
 
-/**
- * Read a token as one or more chords, repairing common OCR damage:
- * - doubled root letter: "Cc" → C
- * - case slips: "c/B" → C/B
- * - merged neighbours: "GF" → G F
- * Returns null when the token isn't chord-like at all.
- */
-export function readChords(t: string): string[] | null {
+function readChordsExact(t: string): string[] | null {
   const recased = fixChordCase(t);
   const candidates = recased === t ? [t] : [t, recased];
   for (const cand of candidates) {
@@ -114,6 +107,24 @@ export function readChords(t: string): string[] | null {
     if (dedoubled !== cand && isChord(dedoubled)) return [dedoubled];
   }
   return splitMergedChords(t) ?? (recased !== t ? splitMergedChords(recased) : null);
+}
+
+/**
+ * Read a token as one or more chords, repairing common OCR damage:
+ * - doubled root letter: "Cc" → C
+ * - case slips: "c/B" → C/B
+ * - merged neighbours: "GF" → G F
+ * - hallucinated accents/glyphs: "Gmé6" → Gm6
+ * Returns null when the token isn't chord-like at all.
+ */
+export function readChords(t: string): string[] | null {
+  const direct = readChordsExact(t);
+  if (direct) return direct;
+  // OCR sometimes drops an accented glyph into a chord ("Gmé6" for "Gm6").
+  // Chords are pure ASCII, so strip non-ASCII characters and retry. Real
+  // accented lyric words don't survive this as chords ("Amén" → "Amn").
+  const ascii = t.replace(/[^\x20-\x7E]/g, "");
+  return ascii !== t && ascii !== "" ? readChordsExact(ascii) : null;
 }
 
 /**

@@ -73,6 +73,17 @@ describe("readChords (OCR chord repair)", () => {
     expect(readChords("cc/B")).toEqual(["C/B"]);
   });
 
+  it("strips hallucinated accents inside chords", () => {
+    expect(readChords("Gmé6")).toEqual(["Gm6"]);
+    expect(readChords("Am７")).toEqual(["Am"]); // fullwidth digit dropped
+  });
+
+  it("never turns accented lyric words into chords", () => {
+    for (const word of ["Amén", "Señor", "café", "Dén"]) {
+      expect(readChords(word), word).toBeNull();
+    }
+  });
+
   it("never recases bare lyric words into chords", () => {
     for (const word of ["am", "a", "be", "do", "go", "and", "dim", "add"]) {
       expect(readChords(word), word).toBeNull();
@@ -305,6 +316,27 @@ describe("damaged chord rows (regression: rendered as lyrics)", () => {
     const out = rowsToChordPro([chords, lyric]);
     expect(out).toContain("I'll");
     expect(out).toContain("[Dsus2/A]");
+  });
+
+  it("keeps a chord line with an accent-damaged chord over its lyric", () => {
+    // "Em7 Gmé6 D" (OCR hallucinated an é into Gm6) over "When they all
+    // should let us be" — the damaged token used to drop the row to 2/3
+    // chordish, under the 0.7 bar, so the whole line rendered as lyrics.
+    const chords = [w("Em7", 30, 20), w("Gmé6", 120, 20), w("D", 260, 20)];
+    const lyric = [
+      w("When", 10, 46),
+      w("they", 60, 46),
+      w("all", 110, 46),
+      w("should", 150, 46),
+      w("let", 220, 46),
+      w("us", 255, 46),
+      w("be", 285, 46),
+    ];
+    const out = rowsToChordPro([chords, lyric]);
+    expect(out).toContain("[Em7]");
+    expect(out).toContain("[Gm6]");
+    expect(out).toContain("[D]");
+    expect(out).not.toContain("é");
   });
 
   it("splits merged chords on a line over lyrics", () => {
