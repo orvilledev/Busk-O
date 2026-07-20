@@ -156,17 +156,25 @@ export function detectKey(body: string): string | null {
 }
 
 /**
- * Whether `offset` (a caret position in the raw line) falls strictly inside
- * a [Chord] bracket — the caret is "on" that chord rather than at its
- * boundary or in the lyric text. Passing the offset as a collapsed
- * `from`/`to` range to shiftLineChords then moves exactly that chord.
+ * The raw [start, end) span of the [Chord] bracket the caret at `offset`
+ * touches — edges included, so a caret right before "[" or right after "]"
+ * still counts as on that chord (clicks often land there, especially on
+ * short chords like [C]). When two chords are adjacent the earlier one wins
+ * the shared boundary. Returns null when the caret isn't on any chord.
+ * Passing the span as `from`/`to` to shiftLineChords moves exactly that
+ * chord.
  */
-export function insideChordBracket(line: string, offset: number): boolean {
+export function chordSpanAt(
+  line: string,
+  offset: number,
+): { start: number; end: number } | null {
   for (const m of line.matchAll(/\[[^\]]*\]/g)) {
-    if (m.index >= offset) return false;
-    if (m.index + m[0].length > offset) return true;
+    if (m.index > offset) return null;
+    if (m.index + m[0].length >= offset) {
+      return { start: m.index, end: m.index + m[0].length };
+    }
   }
-  return false;
+  return null;
 }
 
 /**

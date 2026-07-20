@@ -3,8 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, MoveLeft, MoveRight, Wand2 } from "lucide-react";
 import {
+  chordSpanAt,
   chordsOverWordsToChordPro,
-  insideChordBracket,
   KEYS,
   shiftLineChords,
 } from "@/lib/chordpro";
@@ -93,13 +93,12 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
         if (hasHighlight) {
           return shiftLineChords(line, delta, selStart - start, selEnd - start);
         }
-        // Bare cursor (always a single line): inside a bracket grabs that
-        // chord alone — a collapsed range selects exactly the chord that
-        // strictly contains it.
-        const caret = selStart - start;
-        caretOnChord = insideChordBracket(line, caret);
-        return caretOnChord
-          ? shiftLineChords(line, delta, caret, caret)
+        // Bare cursor (always a single line): touching a bracket grabs that
+        // chord alone — its full span passed as the range selects exactly it.
+        const span = chordSpanAt(line, selStart - start);
+        caretOnChord = span !== null;
+        return span
+          ? shiftLineChords(line, delta, span.start, span.end)
           : shiftLineChords(line, delta);
       })
       .join("\n");
@@ -157,7 +156,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
         lineStart,
         newlineAfter === -1 ? body.length : newlineAfter,
       );
-      if (insideChordBracket(line, ta.selectionStart - lineStart)) {
+      if (chordSpanAt(line, ta.selectionStart - lineStart) !== null) {
         e.preventDefault();
         nudgeChords(delta);
       }

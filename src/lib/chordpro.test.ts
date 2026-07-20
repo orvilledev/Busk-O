@@ -11,7 +11,7 @@ import {
   toLyricSections,
   toPlainLyrics,
   detectKey,
-  insideChordBracket,
+  chordSpanAt,
   shiftLineChords,
 } from "./chordpro";
 
@@ -248,19 +248,31 @@ describe("shiftLineChords", () => {
   });
 });
 
-describe("insideChordBracket", () => {
-  const line = "You [C]pushed me up";
+describe("chordSpanAt", () => {
+  const line = "You [C]pushed me up"; // [C] spans raw offsets 4-7
 
-  it("is true for any caret between the brackets", () => {
-    expect(insideChordBracket(line, 5)).toBe(true); // after [
-    expect(insideChordBracket(line, 6)).toBe(true); // after C
+  it("finds the chord for any caret touching the bracket, edges included", () => {
+    expect(chordSpanAt(line, 4)).toEqual({ start: 4, end: 7 }); // before [
+    expect(chordSpanAt(line, 5)).toEqual({ start: 4, end: 7 }); // after [
+    expect(chordSpanAt(line, 6)).toEqual({ start: 4, end: 7 }); // after C
+    expect(chordSpanAt(line, 7)).toEqual({ start: 4, end: 7 }); // after ]
   });
 
-  it("is false at the bracket boundaries and in lyrics", () => {
-    expect(insideChordBracket(line, 4)).toBe(false); // before [
-    expect(insideChordBracket(line, 7)).toBe(false); // after ]
-    expect(insideChordBracket(line, 0)).toBe(false);
-    expect(insideChordBracket(line, 10)).toBe(false);
-    expect(insideChordBracket("no chords here", 3)).toBe(false);
+  it("is null in lyric text and chord-free lines", () => {
+    expect(chordSpanAt(line, 0)).toBeNull();
+    expect(chordSpanAt(line, 3)).toBeNull();
+    expect(chordSpanAt(line, 10)).toBeNull();
+    expect(chordSpanAt("no chords here", 3)).toBeNull();
+  });
+
+  it("gives a shared boundary between adjacent chords to the earlier one", () => {
+    expect(chordSpanAt("[C][G]ab", 3)).toEqual({ start: 0, end: 3 });
+  });
+
+  it("its span passed to shiftLineChords moves exactly that chord", () => {
+    const span = chordSpanAt(line, 7)!; // caret just after ]
+    expect(shiftLineChords(line, 1, span.start, span.end)).toBe(
+      "You p[C]ushed me up",
+    );
   });
 });
