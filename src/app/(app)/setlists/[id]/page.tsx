@@ -22,9 +22,11 @@ export default async function SetlistPage({
         .select("*, song:songs(*)")
         .eq("setlist_id", id)
         .order("position", { ascending: true }),
+      // Only what the "add song" picker needs to render a row — the full
+      // ChordPro body is fetched per-song only once it's actually added.
       supabase
         .from("songs")
-        .select("id, title, artist, original_key, body")
+        .select("id, title, artist, original_key")
         .order("title"),
     ]);
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { SetlistSong } from "@/types/domain";
+import type { SetlistSong, SetlistSongWithSong } from "@/types/domain";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -118,28 +118,34 @@ export async function addSongToSetlist(setlistId: string, songId: string) {
     .single();
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/setlists/${setlistId}`);
-  return data as SetlistSong;
+
+  // The RPC only returns the bare setlist_songs row; fetch just this one
+  // song (not the whole library) to join in for the builder/export view.
+  const { data: song, error: songErr } = await supabase
+    .from("songs")
+    .select("*")
+    .eq("id", songId)
+    .single();
+  if (songErr) throw new Error(songErr.message);
+
+  // No revalidatePath here: the builder already applies this optimistically,
+  // and revalidating this path would force the whole page (incl. the full
+  // song list) to refetch synchronously on every single add.
+  return { ...(data as SetlistSong), song } as SetlistSongWithSong;
 }
 
-export async function removeSetlistSong(
-  setlistSongId: string,
-  setlistId: string,
-) {
+export async function removeSetlistSong(setlistSongId: string) {
   const { supabase } = await requireUser();
   const { error } = await supabase
     .from("setlist_songs")
     .delete()
     .eq("id", setlistSongId);
   if (error) throw new Error(error.message);
-  revalidatePath(`/setlists/${setlistId}`);
+  // No revalidatePath — see addSongToSetlist.
 }
 
 /** Persist a new ordering; `orderedIds` are setlist_songs ids in display order. */
-export async function reorderSetlistSongs(
-  setlistId: string,
-  orderedIds: string[],
-) {
+export async function reorderSetlistSongs(orderedIds: string[]) {
   const { supabase } = await requireUser();
   const updates = orderedIds.map((id, position) =>
     supabase.from("setlist_songs").update({ position }).eq("id", id),
@@ -147,12 +153,11 @@ export async function reorderSetlistSongs(
   const results = await Promise.all(updates);
   const failed = results.find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
-  revalidatePath(`/setlists/${setlistId}`);
+  // No revalidatePath — see addSongToSetlist.
 }
 
 export async function updateSetlistSong(
   setlistSongId: string,
-  setlistId: string,
   patch: { transpose_key?: string | null; capo?: number | null; notes?: string | null },
 ) {
   const { supabase } = await requireUser();
@@ -161,5 +166,5 @@ export async function updateSetlistSong(
     .update(patch)
     .eq("id", setlistSongId);
   if (error) throw new Error(error.message);
-  revalidatePath(`/setlists/${setlistId}`);
+  // No revalidatePath — see addSongToSetlist.
 }

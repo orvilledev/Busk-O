@@ -26,10 +26,7 @@ import {
   updateSetlistSong,
 } from "@/app/(app)/setlists/actions";
 
-type SongPick = Pick<
-  Song,
-  "id" | "title" | "artist" | "original_key" | "body"
->;
+type SongPick = Pick<Song, "id" | "title" | "artist" | "original_key">;
 
 export function SetlistBuilder({
   setlistId,
@@ -51,9 +48,7 @@ export function SetlistBuilder({
 
   function persistOrder(next: SetlistSongWithSong[]) {
     setItems(next);
-    startTransition(() =>
-      reorderSetlistSongs(setlistId, next.map((i) => i.id)),
-    );
+    startTransition(() => reorderSetlistSongs(next.map((i) => i.id)));
   }
 
   function move(from: number, to: number) {
@@ -69,7 +64,7 @@ export function SetlistBuilder({
     setItems((prev) => prev.filter((i) => i.id !== id));
     startTransition(async () => {
       try {
-        await removeSetlistSong(id, setlistId);
+        await removeSetlistSong(id);
       } catch {
         // If delete fails, revert the optimistic removal
         setItems(prev);
@@ -83,7 +78,9 @@ export function SetlistBuilder({
     setPicking(false);
 
     // Append a placeholder row immediately so the list updates on click,
-    // then swap in the real row (or roll back) once the server responds.
+    // then swap in the real row (with its full song body) once the server
+    // responds — the picker's song list never carries the full ChordPro
+    // body, so the placeholder's `body` is filled in on swap-in.
     const tempId = `temp-${songId}-${Date.now()}`;
     const tempItem = {
       id: tempId,
@@ -94,20 +91,14 @@ export function SetlistBuilder({
       capo: null,
       notes: null,
       created_at: new Date().toISOString(),
-      song: song as Song,
+      song: { ...song, body: "" } as Song,
     } satisfies SetlistSongWithSong;
     setItems((prev) => [...prev, tempItem]);
 
     startTransition(async () => {
       try {
         const row = await addSongToSetlist(setlistId, songId);
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === tempId
-              ? ({ ...row, song: song as Song } as SetlistSongWithSong)
-              : i,
-          ),
-        );
+        setItems((prev) => prev.map((i) => (i.id === tempId ? row : i)));
       } catch {
         setItems((prev) => prev.filter((i) => i.id !== tempId));
       }
@@ -160,7 +151,6 @@ export function SetlistBuilder({
               item={item}
               index={index}
               total={items.length}
-              setlistId={setlistId}
               onMoveUp={() => move(index, index - 1)}
               onMoveDown={() => move(index, index + 1)}
               onRemove={() => remove(item.id)}
@@ -191,7 +181,6 @@ function SetlistRow({
   item,
   index,
   total,
-  setlistId,
   onMoveUp,
   onMoveDown,
   onRemove,
@@ -201,7 +190,6 @@ function SetlistRow({
   item: SetlistSongWithSong;
   index: number;
   total: number;
-  setlistId: string;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
@@ -216,7 +204,7 @@ function SetlistRow({
     capo?: number | null;
     notes?: string | null;
   }) {
-    startTransition(() => updateSetlistSong(item.id, setlistId, p));
+    startTransition(() => updateSetlistSong(item.id, p));
   }
 
   return (
