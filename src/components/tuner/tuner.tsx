@@ -121,30 +121,38 @@ export function Tuner() {
 
           if (hist.length >= 5) {
             const med = median(hist);
-            // Average only the detections in the same note-neighbourhood as the
-            // median (within ~60¢), for a clean, stable frequency.
+            // Detections in the same note-neighbourhood as the median (±30¢).
             const inliers = hist.filter(
-              (f) => Math.abs(1200 * Math.log2(f / med)) < 60,
+              (f) => Math.abs(1200 * Math.log2(f / med)) < 30,
             );
-            const avg = inliers.reduce((a, b) => a + b, 0) / inliers.length;
 
-            // Extra smoothing so the needle glides slowly toward the pitch.
-            const prev = smoothFreqRef.current;
-            const next = prev > 0 ? prev * 0.85 + avg * 0.15 : avg;
-            smoothFreqRef.current = next;
+            // Only move the marker once the pitch has settled: a clear
+            // majority of recent frames must agree with the median. This
+            // freezes out the wandering during the pluck attack — the marker
+            // holds still, then lands where the note actually is.
+            if (inliers.length >= Math.ceil(hist.length * 0.6)) {
+              const avg = inliers.reduce((a, b) => a + b, 0) / inliers.length;
 
-            setReading(frequencyToNote(next));
+              // Extra smoothing so the needle glides slowly to the pitch.
+              const prev = smoothFreqRef.current;
+              const next = prev > 0 ? prev * 0.85 + avg * 0.15 : avg;
+              smoothFreqRef.current = next;
 
-            // "In tune" is measured against the nearest open string, so it only
-            // greens on a real string pitch. Hysteresis (enter ±5¢, leave past
-            // ±9¢) stops chatter; chime once on the transition into tune.
-            const off = Math.abs(1200 * Math.log2(next / nearestString(next).freq));
-            let tuned = wasInTuneRef.current;
-            if (off <= IN_TUNE) tuned = true;
-            else if (off > IN_TUNE + 4) tuned = false;
-            if (tuned && !wasInTuneRef.current) playChime();
-            wasInTuneRef.current = tuned;
-            setInTune(tuned);
+              setReading(frequencyToNote(next));
+
+              // "In tune" is measured against the nearest open string, so it
+              // only greens on a real string pitch. Hysteresis (enter ±5¢,
+              // leave past ±9¢) stops chatter; chime once on entering tune.
+              const off = Math.abs(
+                1200 * Math.log2(next / nearestString(next).freq),
+              );
+              let tuned = wasInTuneRef.current;
+              if (off <= IN_TUNE) tuned = true;
+              else if (off > IN_TUNE + 4) tuned = false;
+              if (tuned && !wasInTuneRef.current) playChime();
+              wasInTuneRef.current = tuned;
+              setInTune(tuned);
+            }
           }
         } else if (++silentFramesRef.current > 40) {
           // Hold the last note through brief gaps; clear after real silence.
