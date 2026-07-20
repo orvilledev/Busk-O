@@ -29,7 +29,14 @@ export function SongsScreen() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Songs</h1>
+        <h1 className="text-xl font-bold">
+          Songs
+          {!warmingUp && (
+            <span className="ml-2 text-sm font-normal text-muted">
+              ({songs.length})
+            </span>
+          )}
+        </h1>
         {canEdit && (
           <Link href="/songs/new">
             <Button size="sm">
