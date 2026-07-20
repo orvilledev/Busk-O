@@ -285,6 +285,33 @@ function chordOnlyLine(row: OcrWord[]): string {
     .trim();
 }
 
+/**
+ * Capitalize the first lyric letter of a line, skipping over any leading
+ * [Chord] brackets (chord spelling is case-sensitive and must stay untouched)
+ * and any leading punctuation/digits. Lines with no lyric letters (e.g. a
+ * bare chord line) are returned unchanged.
+ */
+export function capitalizeFirstLyricLetter(line: string): string {
+  let depth = 0;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === "[") {
+      depth++;
+      continue;
+    }
+    if (c === "]") {
+      depth--;
+      continue;
+    }
+    if (depth > 0) continue;
+    if (/[a-z]/.test(c)) {
+      return line.slice(0, i) + c.toUpperCase() + line.slice(i + 1);
+    }
+    if (/[A-Z]/.test(c)) return line; // already capitalized
+  }
+  return line;
+}
+
 function sectionLabel(row: OcrWord[]): string {
   return row
     .map((w) => w.text)
@@ -309,7 +336,7 @@ export function rowsToChordPro(rows: OcrWord[][]): string {
     if (kind === "chord") {
       const next = rows[i + 1];
       if (next && classifyRow(next) === "lyric") {
-        out.push(mergeChordLyric(rows[i], next));
+        out.push(capitalizeFirstLyricLetter(mergeChordLyric(rows[i], next)));
         i++; // consume the lyric row
       } else {
         out.push(chordOnlyLine(rows[i]));
@@ -318,7 +345,11 @@ export function rowsToChordPro(rows: OcrWord[][]): string {
     }
 
     // Plain lyric line with no chords above it.
-    out.push(rows[i].map((w) => fixLyricOcr(w.text)).join(" "));
+    out.push(
+      capitalizeFirstLyricLetter(
+        rows[i].map((w) => fixLyricOcr(w.text)).join(" "),
+      ),
+    );
   }
 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();

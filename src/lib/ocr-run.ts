@@ -1,5 +1,9 @@
 import { preprocessForOcr } from "./ocr-image";
-import { wordsToChordPro, type OcrWord } from "./ocr-chords";
+import {
+  capitalizeFirstLyricLetter,
+  wordsToChordPro,
+  type OcrWord,
+} from "./ocr-chords";
 
 /**
  * Client-side OCR: an image → aligned ChordPro. Shared by the import page and
@@ -61,7 +65,15 @@ export async function imageToChordPro(
   await worker.terminate();
 
   const words = flattenWords(data.blocks as TesseractBlock[] | null);
-  return words.length > 0 ? wordsToChordPro(words) : data.text.trim();
+  if (words.length > 0) return wordsToChordPro(words);
+
+  // No word boxes came back — fall back to raw recognized text, still
+  // capitalizing each line's first letter for consistency.
+  return data.text
+    .trim()
+    .split("\n")
+    .map(capitalizeFirstLyricLetter)
+    .join("\n");
 }
 
 /** Pull the first image out of a paste/drop, if any. */

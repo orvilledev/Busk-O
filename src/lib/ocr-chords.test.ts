@@ -6,6 +6,7 @@ import {
   readChords,
   splitMergedChords,
   clusterRows,
+  capitalizeFirstLyricLetter,
   rowsToChordPro,
   wordsToChordPro,
   type OcrWord,
@@ -200,10 +201,11 @@ describe("fixLyricOcr (I and l misread as 1)", () => {
   });
 
   it("fixes lowercase l in lyrics", () => {
-    // "blessed holy life" where l is misread as 1
+    // "blessed holy life" where l is misread as 1. The first letter of the
+    // line is also capitalized, so "blessed" comes out as "Blessed".
     const chords = [w("G", 10, 20)];
     const lyric = [w("b1essed", 10, 46), w("ho1y", 70, 46), w("1ife", 140, 46)];
-    expect(rowsToChordPro([chords, lyric])).toContain("blessed");
+    expect(rowsToChordPro([chords, lyric])).toContain("Blessed");
     expect(rowsToChordPro([chords, lyric])).toContain("holy");
     expect(rowsToChordPro([chords, lyric])).toContain("life");
   });
@@ -312,6 +314,51 @@ describe("damaged chord rows (regression: rendered as lyrics)", () => {
     const out = rowsToChordPro([chords, lyric]);
     expect(out).toContain("[E7]");
     expect(out).toContain("[G][F]");
+  });
+});
+
+describe("capitalizeFirstLyricLetter", () => {
+  it("capitalizes a plain lowercase line", () => {
+    expect(capitalizeFirstLyricLetter("amazing grace")).toBe("Amazing grace");
+  });
+
+  it("skips a leading chord bracket", () => {
+    expect(capitalizeFirstLyricLetter("[G]amazing grace")).toBe(
+      "[G]Amazing grace",
+    );
+  });
+
+  it("skips leading punctuation before the first letter", () => {
+    expect(capitalizeFirstLyricLetter("(repeat) verse")).toBe(
+      "(Repeat) verse",
+    );
+  });
+
+  it("leaves an already-capitalized line unchanged", () => {
+    expect(capitalizeFirstLyricLetter("Amazing grace")).toBe("Amazing grace");
+  });
+
+  it("leaves a chord-only line unchanged (no lyric letters)", () => {
+    expect(capitalizeFirstLyricLetter("[G] [D/F#] [Em]")).toBe(
+      "[G] [D/F#] [Em]",
+    );
+  });
+
+  it("leaves an empty line unchanged", () => {
+    expect(capitalizeFirstLyricLetter("")).toBe("");
+  });
+});
+
+describe("rowsToChordPro capitalizes the first lyric letter of every line", () => {
+  it("capitalizes a plain lyric line with no chords above it", () => {
+    const lyric = [w("amazing", 10, 100), w("grace", 100, 100)];
+    expect(rowsToChordPro([lyric])).toBe("Amazing grace");
+  });
+
+  it("capitalizes a lyric line merged with chords, without touching the chord", () => {
+    const chords = [w("G", 10, 20)];
+    const lyric = [w("amazing", 10, 46), w("grace", 100, 46)];
+    expect(rowsToChordPro([chords, lyric])).toBe("[G]Amazing grace");
   });
 });
 
