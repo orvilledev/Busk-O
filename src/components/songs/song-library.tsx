@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Music, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Music, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "./favorite-button";
 
 type SongRow = {
@@ -15,9 +16,12 @@ type SongRow = {
   favorite?: boolean;
 };
 
+const PAGE_SIZE = 50;
+
 export function SongLibrary({ songs }: { songs: SongRow[] }) {
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const allTags = useMemo(
     () => Array.from(new Set(songs.flatMap((s) => s.tags))).sort(),
@@ -35,6 +39,17 @@ export function SongLibrary({ songs }: { songs: SongRow[] }) {
       return matchesQuery && matchesTag;
     });
   }, [songs, query, activeTag]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeTag]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   return (
     <div>
@@ -73,7 +88,7 @@ export function SongLibrary({ songs }: { songs: SongRow[] }) {
         </p>
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
-          {filtered.map((song) => (
+          {paged.map((song) => (
             <li key={song.id} className="flex items-center hover:bg-surface-2">
               <Link
                 href={`/songs/${song.id}`}
@@ -107,6 +122,30 @@ export function SongLibrary({ songs }: { songs: SongRow[] }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {pageCount > 1 && (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => p - 1)}
+            disabled={currentPage <= 1}
+          >
+            <ChevronLeft className="h-4 w-4" /> Prev
+          </Button>
+          <span className="text-sm text-muted">
+            Page {currentPage} of {pageCount}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={currentPage >= pageCount}
+          >
+            Next <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       )}
     </div>
   );
