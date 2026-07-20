@@ -33,7 +33,12 @@ const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 export function SongEditor({ song, defaults, action }: SongEditorProps) {
   const initial: SongEditorDefaults = song ?? defaults ?? {};
-  const [body, setBody] = useState(initial.body ?? "");
+  // Songs saved before line endings were normalized may carry CRLF. The
+  // textarea DOM always normalizes to LF, so keep the state in LF too —
+  // otherwise cursor offsets drift and chord nudging targets the wrong spot.
+  const [body, setBody] = useState(() =>
+    (initial.body ?? "").replace(/\r\n?/g, "\n"),
+  );
   const [submitting, setSubmitting] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const pendingSelection = useRef<{ start: number; end: number } | null>(null);

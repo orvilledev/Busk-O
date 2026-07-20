@@ -33,7 +33,9 @@ function readForm(formData: FormData): SongInput {
     original_key: String(formData.get("original_key") ?? "").trim(),
     tempo: tempoRaw ? Number(tempoRaw) : null,
     tags: parseTags(String(formData.get("tags") ?? "")),
-    body: String(formData.get("body") ?? ""),
+    // Browsers submit textarea values with CRLF; store LF so character
+    // offsets in the editor (which the DOM normalizes to LF) line up.
+    body: String(formData.get("body") ?? "").replace(/\r\n?/g, "\n"),
   };
 }
 
