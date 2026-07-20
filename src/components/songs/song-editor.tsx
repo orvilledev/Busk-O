@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ImagePlus, Loader2, MoveLeft, MoveRight, Wand2 } from "lucide-react";
+import {
+  ImagePlus,
+  KeyRound,
+  Loader2,
+  MoveLeft,
+  MoveRight,
+  Wand2,
+} from "lucide-react";
 import {
   chordSpanAt,
   chordsOverWordsToChordPro,
+  detectKey,
   KEYS,
   shiftLineChords,
 } from "@/lib/chordpro";
@@ -39,6 +47,7 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
   const [body, setBody] = useState(() =>
     (initial.body ?? "").replace(/\r\n?/g, "\n"),
   );
+  const [originalKey, setOriginalKey] = useState(initial.original_key ?? "");
   const [submitting, setSubmitting] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const pendingSelection = useRef<{ start: number; end: number } | null>(null);
@@ -64,6 +73,13 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
     // Interpret the current textarea as chords-over-lyrics and rewrite it as
     // ChordPro. Handy right after pasting a chart off the web.
     setBody(chordsOverWordsToChordPro(body));
+  }
+
+  /** Best-guess the key from the chords typed/pasted above — a starting
+   * point, not gospel, so it just fills the dropdown for the user to check. */
+  function handleDetectKey() {
+    const detected = detectKey(body);
+    if (detected) setOriginalKey(detected);
   }
 
   /**
@@ -197,13 +213,25 @@ export function SongEditor({ song, defaults, action }: SongEditorProps) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelClass} htmlFor="original_key">
-              Key
-            </label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className={labelClass} htmlFor="original_key">
+                Key
+              </label>
+              <button
+                type="button"
+                onClick={handleDetectKey}
+                disabled={!body.trim()}
+                title="Guess the key from the chords typed below"
+                className="mb-1 flex items-center gap-1 text-xs text-muted hover:text-foreground disabled:opacity-40"
+              >
+                <KeyRound className="h-3 w-3" /> Detect
+              </button>
+            </div>
             <select
               id="original_key"
               name="original_key"
-              defaultValue={initial.original_key ?? ""}
+              value={originalKey}
+              onChange={(e) => setOriginalKey(e.target.value)}
               className={field}
             >
               <option value="">—</option>

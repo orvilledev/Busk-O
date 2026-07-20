@@ -71,6 +71,26 @@ export async function updateSong(id: string, formData: FormData) {
   redirect(`/songs/${id}`);
 }
 
+/**
+ * Permanently transpose the stored chart and relabel its key — the "print
+ * this transposition as the new original" flow from the song view page.
+ */
+export async function setOriginalKey(
+  id: string,
+  body: string,
+  originalKey: string,
+) {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("songs")
+    .update({ body, original_key: originalKey })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/songs");
+  revalidatePath(`/songs/${id}`);
+}
+
 export async function deleteSong(id: string) {
   const { supabase } = await requireAdmin();
   const { error } = await supabase.from("songs").delete().eq("id", id);

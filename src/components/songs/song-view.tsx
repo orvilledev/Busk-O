@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
+  KeyRound,
+  Loader2,
   Pencil,
   Trash2,
   Type,
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KEYS, transposeKey, type Key } from "@/lib/keys";
+import { parse, transpose, toChordPro } from "@/lib/chordpro";
 import { useAutoScroll } from "@/hooks/use-auto-scroll";
 import { ChordChart } from "./chord-chart";
 import { ChordColorPicker } from "./chord-color-picker";
@@ -24,23 +27,27 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Stepper } from "@/components/ui/stepper";
 import { useCanEditSongs } from "@/components/role-provider";
 import { downloadSongPdf } from "@/lib/pdf-export";
+import { setOriginalKey } from "@/app/(app)/songs/actions";
 import type { Song } from "@/types/domain";
 
 const isKey = (k: string | null): k is Key =>
   !!k && (KEYS as readonly string[]).includes(k);
 
 export function SongView({
-  song,
+  song: initialSong,
   deleteAction,
 }: {
   song: Song;
   deleteAction: () => Promise<void>;
 }) {
+  const [song, setSong] = useState(initialSong);
   const [semitones, setSemitones] = useState(0);
   const [capo, setCapo] = useState(0);
   const [fontScale, setFontScale] = useState(1);
   const [speed, setSpeed] = useState(24); // px per second
   const [moreOpen, setMoreOpen] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyError, setKeyError] = useState("");
   const canEdit = useCanEditSongs();
 
   // Auto-scroll the whole page so the performer can read hands-free. The
@@ -63,6 +70,27 @@ export function SongView({
   function reset() {
     setSemitones(0);
     setCapo(0);
+  }
+
+  /**
+   * Bake the current transpose into the stored chart: rewrites every chord by
+   * `renderSemitones` and relabels the song's original key to match, so what's
+   * printed is truly in that key rather than relying on a live transpose.
+   */
+  async function handleSetOriginalKey() {
+    if (!shapeKey || renderSemitones === 0) return;
+    setSavingKey(true);
+    setKeyError("");
+    try {
+      const newBody = toChordPro(transpose(parse(song.body), renderSemitones));
+      await setOriginalKey(song.id, newBody, shapeKey);
+      setSong((s) => ({ ...s, body: newBody, original_key: shapeKey }));
+      reset();
+    } catch (err) {
+      setKeyError(err instanceof Error ? err.message : "Failed to save key.");
+    } finally {
+      setSavingKey(false);
+    }
   }
 
   return (
@@ -212,6 +240,21 @@ export function SongView({
               <RotateCcw className="h-3.5 w-3.5" /> Reset
             </button>
           )}
+          {canEdit && shapeKey && renderSemitones !== 0 && (
+            <button
+              onClick={handleSetOriginalKey}
+              disabled={savingKey}
+              title="Rewrite the stored chart in this key and use it as the new original key"
+              className="flex items-center gap-1 text-accent hover:underline disabled:opacity-50"
+            >
+              {savingKey ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <KeyRound className="h-3.5 w-3.5" />
+              )}
+              Set as original key ({shapeKey})
+            </button>
+          )}
           <div className="text-xs text-muted sm:ml-auto sm:text-sm">
             {shapeKey ? (
               capo > 0 ? (
@@ -235,6 +278,12 @@ export function SongView({
           </div>
         </div>
       </div>
+
+      {keyError && (
+        <div className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
+          {keyError}
+        </div>
+      )}
 
       <ChordChart source={song.body} semitones={renderSemitones} fontScale={fontScale} />
     </div>
